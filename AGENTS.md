@@ -1,170 +1,185 @@
-# AEGIS Operational Constitution
+# Constituição Operacional do AEGIS
 
-## Authority and scope
+## Autoridade e escopo
 
-This file governs human and automated agents working anywhere in the AEGIS repository. More specific instructions may add constraints but must not weaken this constitution, security policy, requirements or quality gates. When instructions conflict or scope is unclear, stop and request human direction.
+Este arquivo rege agentes humanos e automatizados que trabalhem em qualquer parte do repositório AEGIS. Instruções mais específicas podem acrescentar restrições, mas não podem enfraquecer esta constituição, a política de segurança, os requisitos ou os Gates de Qualidade. Quando houver conflito entre instruções ou o escopo não estiver claro, pare e solicite orientação humana.
 
-The repository is intentionally incremental. A roadmap entry is not authorization to implement it. Work only on the explicitly approved phase/task.
+O repositório é intencionalmente incremental. Uma entrada no roadmap não autoriza sua implementação. Trabalhe apenas na fase ou tarefa explicitamente aprovada.
 
-## Core obligations
+## Política de Idioma
 
-- Preserve AEGIS as a product with embedded Quality Engineering, not a test-script showcase.
-- Prefer the simplest design that satisfies approved requirements.
-- Maintain modular-monolith boundaries; distributed complexity requires a concrete problem and approved ADR.
-- Never mask errors, fabricate evidence or claim an unimplemented capability exists.
-- Treat security, testability, observability, data integrity and accessibility as design concerns.
-- Preserve user work and unrelated changes; do not perform destructive Git/filesystem operations without explicit authorization.
-- Keep secrets, credentials and personal/sensitive data out of source, logs, examples and artifacts.
+- O idioma humano oficial do projeto é português do Brasil (PT-BR).
+- Documentação, explicações, critérios, riscos, recomendações e relatórios de agentes devem ser escritos em PT-BR.
+- Agentes que trabalhem no AEGIS devem apresentar seus relatórios do projeto em PT-BR.
+- Código-fonte deve usar preferencialmente identificadores técnicos em inglês quando isso seguir as convenções profissionais e do ecossistema, por exemplo `ProductService`, `ProductRepository`, `CorrelationIdFilter` e `QualityGate`.
+- Nomes oficiais de tecnologias, bibliotecas e ferramentas devem ser preservados.
+- Protocolos, formatos, content-types, headers HTTP, comandos, caminhos e identificadores técnicos não devem ser traduzidos.
+- Comentários e documentação explicativa do código podem ser escritos em português quando forem realmente necessários; comentários óbvios devem ser evitados independentemente do idioma.
+- Toda nova documentação deve obedecer a esta política.
 
-## Before altering anything
+Essa combinação preserva as convenções do ecossistema, a legibilidade internacional, o alinhamento com a documentação das bibliotecas, a manutenção e o valor profissional do portfólio.
 
-An agent must:
+## Obrigações centrais
 
-1. Confirm repository root, current worktree state and task scope.
-2. Read this file, the relevant phase in [PLANS.md](PLANS.md), and applicable documents under `docs/`.
-3. Identify requirement IDs and acceptance criteria affected; do not invent behavior that contradicts them.
-4. Check [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and relevant [ADRs](docs/ADR/README.md) for boundaries and decisions.
-5. Evaluate Quality Engineering impact: test layers, data, evidence, traceability, regressions and failure diagnosis.
-6. Evaluate security impact: authentication/authorization, validation, secrets, sensitive data, abuse and supply chain.
-7. Evaluate data/migration, API/event compatibility, observability and local-execution impact where applicable.
-8. Inspect existing code/tests/configuration before proposing a pattern. Do not assume placeholder architecture is implemented.
-9. Clarify with a human before a material scope expansion, destructive action, public/external side effect or difficult-to-reverse decision.
+- Preservar o AEGIS como um produto com Engenharia de Qualidade incorporada, não como uma vitrine de scripts de teste.
+- Preferir o design mais simples que satisfaça os requisitos aprovados.
+- Manter os limites do Monólito Modular; complexidade distribuída exige um problema concreto e um ADR aprovado.
+- Nunca mascarar erros, fabricar evidências nem afirmar que uma capacidade não implementada existe.
+- Tratar segurança, testabilidade, observabilidade, integridade de dados e acessibilidade como preocupações de design.
+- Preservar o trabalho do usuário e alterações não relacionadas; não realizar operações destrutivas no Git ou no sistema de arquivos sem autorização explícita.
+- Manter secrets, credenciais e dados pessoais/sensíveis fora do código-fonte, logs, exemplos e artefatos.
 
-For documentation-only work, “applicable” checks still include cross-document consistency and relative links; executable checks are not fabricated.
+## Antes de alterar qualquer coisa
 
-## During a change
+Um agente deve:
 
-- Make small, cohesive, reviewable changes tied to approved scope.
-- Follow existing conventions and module ownership; avoid direct access to another module's persistence internals.
-- Keep business policy separate from framework/I/O details and expose controllable boundaries for tests.
-- Validate inputs at trust boundaries and authorize protected actions server-side.
-- Use safe error contracts; never expose stack traces, secrets or sensitive payloads.
-- Preserve backward compatibility or document/version an intentional break.
-- Make async behavior idempotent, retry bounded and failure state visible.
-- Add logs/metrics/traces intentionally, with correlation and redaction; avoid high-cardinality metrics.
-- Update tests with behavior changes at the lowest effective layer plus necessary integration/user coverage.
-- Keep test outcomes deterministic. Do not add sleeps, catch-and-ignore or uncontrolled global retry.
-- Do not add a technology, abstraction, table, module or service without a requirement/use case.
-- Record difficult-to-reverse decisions as ADRs; do not silently decide through code alone.
-- Never edit generated dependencies/build output as source.
+1. Confirmar a raiz do repositório, o estado atual do working tree e o escopo da tarefa.
+2. Ler este arquivo, a fase relevante em [PLANS.md](PLANS.md) e os documentos aplicáveis em `docs/`.
+3. Identificar os IDs de requisitos e critérios de aceite afetados; não inventar comportamentos que os contradigam.
+4. Consultar [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e os [ADRs](docs/ADR/README.md) relevantes para conhecer limites e decisões.
+5. Avaliar o impacto em Engenharia de Qualidade: camadas de teste, dados, evidências, rastreabilidade, regressões e diagnóstico de falhas.
+6. Avaliar o impacto em segurança: autenticação/autorização, validação, secrets, dados sensíveis, abuso e cadeia de suprimentos.
+7. Avaliar, quando aplicável, impactos em dados/migração, compatibilidade de API/eventos, observabilidade e execução local.
+8. Inspecionar código, testes e configurações existentes antes de propor um padrão. Não presumir que uma arquitetura representada apenas por placeholders esteja implementada.
+9. Consultar uma pessoa antes de expandir materialmente o escopo, executar uma ação destrutiva, causar efeito público/externo ou tomar uma decisão difícil de reverter.
 
-## Critical test integrity rule
+Para trabalhos exclusivamente documentais, as verificações “aplicáveis” ainda incluem consistência entre documentos e links relativos; verificações executáveis não devem ser fabricadas.
 
-Tests must not be deleted, ignored, skipped, quarantined, broadly retried, weakened or have assertions removed merely to obtain a green pipeline.
+## Durante uma alteração
 
-Never modify a test only to make it pass. Investigate whether the cause is:
+- Fazer alterações pequenas, coesas, revisáveis e vinculadas ao escopo aprovado.
+- Seguir as convenções e responsabilidades existentes dos módulos; evitar acesso direto aos detalhes internos de persistência de outro módulo.
+- Manter políticas de negócio separadas de detalhes de framework/E/S e expor limites controláveis para testes.
+- Validar entradas nos limites de confiança e autorizar ações protegidas no servidor.
+- Usar contratos de erro seguros; nunca expor stack traces, secrets ou payloads sensíveis.
+- Preservar compatibilidade retroativa ou documentar/versionar uma quebra intencional.
+- Tornar o comportamento assíncrono idempotente, limitar retry e deixar o estado de falha visível.
+- Adicionar logs/métricas/traces de forma intencional, com correlação e redação; evitar métricas de alta cardinalidade.
+- Atualizar testes junto com mudanças de comportamento na camada eficaz mais baixa, além da cobertura necessária de integração/usuário.
+- Manter os resultados dos testes determinísticos. Não adicionar sleeps, captura com descarte de erros nem retry global sem controle.
+- Não adicionar tecnologia, abstração, tabela, módulo ou serviço sem requisito/caso de uso.
+- Registrar decisões difíceis de reverter em ADRs; não decidir silenciosamente apenas por meio do código.
+- Nunca editar dependências geradas nem saída de build como se fossem código-fonte.
 
-- a product defect;
-- a legitimate requirement/contract change;
-- an incorrect or obsolete test expectation;
-- test implementation/data nondeterminism;
-- environment/tooling failure.
+## Regra crítica de integridade dos testes
 
-A legitimate test change must explain which cause applies and preserve or improve risk coverage. Quarantine follows [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md#flaky-test-policy), requires an owner/expiry and never counts as pass.
+Testes não devem ser excluídos, ignorados, pulados, colocados em quarentena, submetidos a retry amplo, enfraquecidos nem ter asserções removidas apenas para obter um pipeline verde.
 
-## Prohibited shortcuts
+Nunca modifique um teste somente para fazê-lo passar. Investigue se a causa é:
 
-Without explicit requirement, evidence and approved ADR, do not introduce Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch or microservices.
+- um defeito do produto;
+- uma alteração legítima de requisito/contrato;
+- uma expectativa de teste incorreta ou obsoleta;
+- não determinismo na implementação ou nos dados do teste;
+- falha de ambiente/ferramenta.
 
-Also do not:
+Uma alteração legítima de teste deve explicar qual causa se aplica e preservar ou melhorar a cobertura de risco. A quarentena segue [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md#política-de-testes-instáveis), exige responsável e prazo de expiração e nunca conta como aprovação.
 
-- disable validation, authorization, TLS/security checks or quality gates to simplify development;
-- use real secrets or production/personal data for tests/demos;
-- make the Fault Lab reachable in production;
-- treat mock-only tests as proof that real persistence/messaging/storage behavior works;
-- interpret missing/stale quality evidence as passing;
-- let Quality Score override a hard blocking rule;
-- claim “exactly once” across distributed boundaries;
-- perform opportunistic unrelated refactors during a focused task;
-- commit, push, deploy, publish or contact external systems unless explicitly requested.
+## Atalhos proibidos
 
-## After a change
+Sem requisito explícito, evidência e ADR aprovado, não introduza Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch ou microservices.
 
-An agent must:
+Também não:
 
-1. Run the smallest complete set of applicable validation, then broader checks proportional to risk.
-2. Review the complete diff for unintended edits, generated files, secrets and scope creep.
-3. Confirm errors/failures were resolved rather than hidden.
-4. Verify requirement/test/evidence traceability where implemented.
-5. Recheck authorization, validation, data integrity, backward compatibility and failure modes.
-6. Recheck telemetry, correlation, redaction, health and operational behavior where relevant.
-7. Update documentation, examples, ADRs and plans when behavior/decisions changed.
-8. Report validations actually run, results, unrun checks, assumptions, risks and follow-up work.
-9. Do not commit or push unless the human explicitly requested it.
+- desabilite validação, autorização, TLS/verificações de segurança ou Gates de Qualidade para simplificar o desenvolvimento;
+- use secrets reais ou dados pessoais/de produção em testes/demonstrações;
+- torne o Laboratório de Falhas acessível em produção;
+- trate testes apenas com mocks como prova de que o comportamento real de persistência, mensageria ou armazenamento funciona;
+- interprete evidências de qualidade ausentes ou desatualizadas como aprovação;
+- permita que a Pontuação de Qualidade sobreponha uma regra de bloqueio crítico;
+- afirme semântica “exactly once” entre limites distribuídos;
+- realize refatorações oportunistas e não relacionadas durante uma tarefa focada;
+- faça commit, push, deploy, publicação ou contato com sistemas externos, salvo solicitação explícita.
 
-## Definition of Done
+## Depois de uma alteração
 
-A change is done only when all applicable conditions are met:
+Um agente deve:
 
-### Scope and correctness
+1. Executar o menor conjunto completo de validações aplicáveis e, em seguida, verificações mais amplas proporcionais ao risco.
+2. Revisar o diff completo em busca de edições não intencionais, arquivos gerados, secrets e expansão de escopo.
+3. Confirmar que erros/falhas foram resolvidos, não ocultados.
+4. Verificar a rastreabilidade entre requisitos, testes e evidências onde implementada.
+5. Reavaliar autorização, validação, integridade de dados, compatibilidade retroativa e modos de falha.
+6. Reavaliar telemetria, correlação, redação, health e comportamento operacional quando relevantes.
+7. Atualizar documentação, exemplos, ADRs e planos quando o comportamento ou as decisões mudarem.
+8. Relatar as validações realmente executadas, resultados, verificações não executadas, premissas, riscos e trabalhos posteriores.
+9. Não fazer commit nem push, salvo solicitação humana explícita.
 
-- Approved objective and acceptance criteria are satisfied without unrelated expansion.
-- Requirement IDs and domain rules are reflected in implementation and tests.
-- Boundary/error/concurrency/failure behavior is considered, not only the happy path.
+<a id="definition-of-done"></a>
 
-### Build and static quality
+## Definição de Pronto (Definition of Done)
 
-- Build/type checking succeeds.
-- Formatting and lint/static analysis succeed.
-- No unjustified dependency, warning suppression or generated noise is introduced.
+Uma alteração está pronta somente quando todas as condições aplicáveis forem atendidas:
 
-### Tests and evidence
+### Escopo e correção
 
-- Appropriate unit, component, integration, API, contract, E2E and non-functional checks pass as applicable.
-- New/changed risk has coverage at the lowest effective layer.
-- Test data is isolated and no failure is masked by retry/skip/weakened assertion.
-- Relevant execution evidence identifies build/environment and failures are diagnosable.
+- O objetivo aprovado e os critérios de aceite são satisfeitos sem expansão não relacionada.
+- Os IDs de requisitos e regras de domínio estão refletidos na implementação e nos testes.
+- Os comportamentos de limite, erro, concorrência e falha são considerados, não apenas o caminho feliz.
 
-### Security
+### Build e qualidade estática
 
-- Authentication, authorization, validation, secrets, abuse and dependency considerations were reviewed.
-- Applicable security checks pass and no unresolved hard blocker exists.
-- Sensitive data is absent from logs/errors/evidence/source.
+- O build e a verificação de tipos são concluídos com sucesso.
+- A formatação e o lint/análise estática são concluídos com sucesso.
+- Nenhuma dependência injustificada, supressão de aviso ou ruído gerado é introduzido.
 
-### Documentation and decisions
+### Testes e evidências
 
-- API/event/data/behavior documentation is current.
-- Important trade-offs are captured in an ADR.
-- Relative links and cross-document terminology remain consistent.
+- As verificações apropriadas de unidade, componente, integração, API, contrato, E2E e não funcionais passam, quando aplicáveis.
+- Riscos novos ou alterados têm cobertura na camada eficaz mais baixa.
+- Os dados de teste são isolados e nenhuma falha é mascarada por retry, skip ou asserção enfraquecida.
+- As evidências relevantes de execução identificam build/ambiente e permitem diagnosticar falhas.
 
-### Observability and operations
+### Segurança
 
-- Critical new outcomes/failures have proportionate structured telemetry and correlation.
-- Health, retry/recovery, alerts/runbooks and local execution are updated where applicable.
-- No high-cardinality or sensitive telemetry is introduced.
+- As considerações sobre autenticação, autorização, validação, secrets, abuso e dependências foram revisadas.
+- As verificações de segurança aplicáveis passam e não existe bloqueio crítico não resolvido.
+- Dados sensíveis estão ausentes de logs, erros, evidências e código-fonte.
 
-### Review
+### Documentação e decisões
 
-- Full diff and repository status were reviewed.
-- All executed and unexecuted validations, open risks and limitations are honestly reported.
+- A documentação de API, eventos, dados e comportamento está atualizada.
+- Trade-offs importantes estão registrados em um ADR.
+- Links relativos e terminologia entre documentos permanecem consistentes.
 
-For documentation-only changes, executable build/lint/test items are `not applicable`, but link, consistency, scope and diff review are mandatory.
+### Observabilidade e operações
 
-## Change report template
+- Novos resultados e falhas críticos têm telemetria estruturada e correlação proporcionais.
+- Health, retry/recuperação, alertas/runbooks e execução local estão atualizados quando aplicáveis.
+- Nenhuma telemetria sensível ou de alta cardinalidade é introduzida.
 
-Use a concise handoff:
+### Revisão
+
+- O diff completo e o estado do repositório foram revisados.
+- Todas as validações executadas e não executadas, riscos abertos e limitações são relatados com honestidade.
+
+Para alterações exclusivamente documentais, itens executáveis de build/lint/testes são `não aplicáveis`, mas a revisão de links, consistência, escopo e diff é obrigatória.
+
+## Modelo de relatório de alteração
+
+Use uma entrega concisa:
 
 ```text
-Scope:
-Requirements:
-Files changed:
-Validation performed:
-Validation not performed and why:
-Security/observability impact:
-Risks and open questions:
+Escopo:
+Requisitos:
+Arquivos alterados:
+Validações executadas:
+Validações não executadas e motivo:
+Impacto em segurança/observabilidade:
+Riscos e questões em aberto:
 ```
 
-Never report a check as passed if it was not executed.
+Nunca informe que uma verificação passou se ela não foi executada.
 
-## Documentation authority
+## Autoridade da documentação
 
-- [docs/PROJECT.md](docs/PROJECT.md): product intent and scope.
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): behavior and acceptance baseline.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): boundaries and dependency rules.
-- [docs/API_SPEC.md](docs/API_SPEC.md) and [docs/DATA_MODEL.md](docs/DATA_MODEL.md): conceptual contracts/models.
-- [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md), [docs/SECURITY.md](docs/SECURITY.md), [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md), [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md): cross-cutting policy.
-- [docs/ROADMAP.md](docs/ROADMAP.md): revisable direction.
-- [PLANS.md](PLANS.md): approved-work candidate phases.
-- Accepted ADRs: reasons and consequences for architectural decisions. A superseding ADR must say what it replaces.
+- [docs/PROJECT.md](docs/PROJECT.md): intenção e escopo do produto.
+- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): baseline de comportamento e aceite.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): limites e regras de dependência.
+- [docs/API_SPEC.md](docs/API_SPEC.md) e [docs/DATA_MODEL.md](docs/DATA_MODEL.md): contratos/modelos conceituais.
+- [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md), [docs/SECURITY.md](docs/SECURITY.md), [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) e [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md): políticas transversais.
+- [docs/ROADMAP.md](docs/ROADMAP.md): direção revisável.
+- [PLANS.md](PLANS.md): fases candidatas a trabalho aprovado.
+- ADRs aceitos: razões e consequências das decisões arquiteturais. Um ADR substituto deve declarar o que substitui.
 
-When documents disagree, do not select the convenient rule. Identify the conflict, assess risk and request/record a deliberate resolution.
+Quando documentos divergirem, não selecione a regra mais conveniente. Identifique o conflito, avalie o risco e solicite/registre uma resolução deliberada.

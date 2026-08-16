@@ -1,42 +1,42 @@
-# AEGIS Glossary
+# Glossário do AEGIS
 
-This glossary defines cross-document terms. Physical storage and API shapes may evolve, but implementations must preserve these distinctions.
+Este glossário define termos usados entre documentos. O armazenamento físico e os formatos da API podem evoluir, mas as implementações devem preservar essas distinções.
 
 ## Release
 
-A logical, versioned delivery scope such as `v1.0.0`. It groups one or more candidates and the historical decisions made about them. A release version is not sufficient to identify executable bits.
+Um escopo lógico e versionado de entrega, como v1.0.0. Agrupa um ou mais candidatos e as decisões históricas tomadas sobre eles. A versão da release não é suficiente para identificar os bits executáveis.
 
-## Candidate
+## Candidato
 
-One evaluation attempt for a release, bound to exactly one immutable build identity, target environment and evidence cutoff. Multiple candidates may exist for the same release; superseding one never overwrites its evidence or decision history.
+Uma tentativa de avaliação de uma release, vinculada a exatamente uma identidade imutável de build, ambiente-alvo e corte de evidência. Vários candidatos podem existir para a mesma release; substituir um nunca sobrescreve suas evidências nem seu histórico de decisões.
 
 ## Build
 
-An immutable output identity derived from a specific source commit and resolved build inputs. It may identify one or more artifacts. A display version without commit/artifact identity is not adequate evidence provenance.
+Uma identidade imutável de saída derivada de um commit específico do código-fonte e das entradas resolvidas do build. Pode identificar um ou mais artefatos. Uma versão de exibição sem identidade de commit/artefato não oferece proveniência de evidência adequada.
 
-## Execution
+## Execução
 
-One attributable invocation of a test suite, test case, security scan, performance scenario, resilience experiment or other approved evidence source. It records effective source, build/candidate, environment, timing, tool/schema version and attempt history.
+Uma invocação atribuível de uma suíte de testes, Caso de Teste, varredura de segurança, cenário de performance, experimento de resiliência ou outra fonte de evidência aprovada. Registra fonte efetiva, build/candidato, ambiente, tempos, versão da ferramenta/schema e histórico de tentativas.
 
-## Evidence
+## Evidência
 
-An attributable result or immutable reference supporting an engineering/release conclusion, such as a test result, report, screenshot, trace, log excerpt, security finding or performance measurement. Evidence includes provenance, freshness, sensitivity and retention metadata; a screenshot or untrusted payload alone is not proof.
+Um resultado atribuível ou referência imutável que sustenta uma conclusão de engenharia/release, como resultado de teste, relatório, captura de tela, trace, trecho de log, achado de segurança ou medição de performance. A Evidência inclui metadados de proveniência, atualização, sensibilidade e retenção; uma captura de tela ou payload não confiável isoladamente não é prova.
 
 ## Gate
 
-A versioned deterministic policy condition evaluated against a candidate evidence snapshot. Its outcome is `PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, `NOT_APPLICABLE` or `ERROR`. Hard gates cannot be overridden by a numerical score.
+Uma condição de política determinística e versionada, avaliada contra um snapshot de evidências do candidato. Seu resultado é PASS, FAIL, INSUFFICIENT_EVIDENCE, NOT_APPLICABLE ou ERROR. Gates críticos não podem ser sobrepostos por pontuação numérica.
 
-## Risk
+## Risco
 
-A versioned classification of candidate uncertainty and potential impact using gate results, evidence and, when applicable, Quality Score. Initial levels are `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` and `UNKNOWN`. Risk is not the same as pass rate.
+Uma classificação versionada da incerteza e do impacto potencial do candidato usando resultados de gates, evidências e, quando aplicável, Pontuação de Qualidade. Os níveis iniciais são LOW, MEDIUM, HIGH, CRITICAL e UNKNOWN. Risco não equivale à taxa de aprovação.
 
-## Decision
+## Decisão
 
-An immutable human-owned record that approves, blocks or—only when policy allows—approves with an explicit time-bounded exception for one exact candidate/build. A machine recommendation is an input to a decision, never the decision itself.
+Um registro imutável de responsabilidade humana que aprova, bloqueia ou — somente quando a política permitir — aprova com exceção explícita e limitada no tempo um candidato/build exato. Uma recomendação de máquina é uma entrada para a decisão, nunca a própria decisão.
 
-## Related terms
+## Termos relacionados
 
-- **Quality Score:** a future explainable derived policy input; `NOT_APPLICABLE` before Quality Engine maturity.
-- **Recommendation:** future Engine output (`APPROVE`, `REVIEW` or `BLOCK`) under a versioned policy; it never deploys or cancels a hard blocker.
-- **Correlation ID:** a bounded diagnostic identifier for a logical flow; it is not authentication, idempotency or proof of correctness.
-- **Trace ID:** an identifier for one causal telemetry trace; one correlation may map to multiple traces after retries or replays.
+- **Pontuação de Qualidade (Quality Score):** futura entrada derivada e explicável da política; NOT_APPLICABLE antes da maturidade do Motor de Qualidade.
+- **Recomendação:** futura saída do Motor (APPROVE, REVIEW ou BLOCK) sob política versionada; nunca faz deploy nem cancela bloqueio crítico.
+- **ID de correlação:** identificador diagnóstico limitado de um fluxo lógico; não é autenticação, idempotência nem prova de correção.
+- **ID de trace:** identificador de um trace causal de telemetria; uma correlação pode mapear vários traces após retries ou replays.

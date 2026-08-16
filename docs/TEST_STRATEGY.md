@@ -1,354 +1,360 @@
-# AEGIS Quality Engineering and Test Strategy
+# Estratégia de Engenharia de Qualidade e Testes do AEGIS
 
-## Purpose
+## Finalidade
 
-This strategy defines how AEGIS builds confidence in product behavior and release decisions. It applies to design, implementation, delivery and operation. It is not an instruction to automate every test or to maximize a vanity test count.
+Esta estratégia define como o AEGIS constrói confiança no comportamento do produto e nas decisões de release. Ela se aplica ao design, à implementação, à entrega e à operação. Não é uma instrução para automatizar todo teste nem maximizar uma contagem de testes por vaidade.
 
-The strategy is risk-based and evidence-driven. Quality ownership is shared: product clarifies value and acceptance, developers prevent and detect defects close to code, Quality Engineers shape coverage and investigation, security specialists challenge threats, and release owners make explicit decisions.
+A estratégia é baseada em risco e orientada por evidências. A responsabilidade pela qualidade é compartilhada: Produto esclarece valor e aceite; desenvolvimento previne e detecta defeitos perto do código; profissionais de Engenharia de Qualidade moldam cobertura e investigação; especialistas em segurança desafiam ameaças; e responsáveis por releases tomam decisões explícitas.
 
-## Non-negotiable policy
+## Política inegociável
 
-> Never modify a test merely to make it pass.
+> Nunca modifique um teste apenas para fazê-lo passar.
 
-A failing test is evidence to investigate. Determine whether the cause is product behavior, test design/implementation, requirement ambiguity, data, environment, tooling or an accepted change. A test may change only when the expected behavior or the test itself is demonstrably wrong, with review and traceability.
+Um teste com falha é evidência a investigar. Determine se a causa está no comportamento do produto, design/implementação do teste, ambiguidade do requisito, dados, ambiente, ferramenta ou em uma alteração aceita. Um teste só pode mudar quando o comportamento esperado ou o próprio teste estiver demonstravelmente errado, com revisão e rastreabilidade.
 
-Tests must not be deleted, skipped, quarantined, retried into invisibility or weakened solely to obtain a green pipeline. Exceptions follow the flaky-test policy and remain visible.
+Testes não devem ser excluídos, pulados, colocados em quarentena, escondidos por retry nem enfraquecidos somente para obter um pipeline verde. Exceções seguem a política de testes instáveis e permanecem visíveis.
 
-## Quality Engineering principles
+## Princípios de Engenharia de Qualidade
 
-1. Prevent defects through clear requirements, examples, design review and simple boundaries.
-2. Test at the lowest effective layer; add higher-layer coverage for integration and user confidence.
-3. Prioritize by business impact, likelihood, detectability and change exposure.
-4. Make production-relevant failures observable and reproducible in safe environments.
-5. Treat test code, data and tooling as production-quality assets.
-6. Separate product failures from test and infrastructure failures in reporting.
-7. Preserve evidence, release candidate/build identity, environment and policy version.
-8. Use automation for repeatable checks; use human exploration for discovery, ambiguity and experience.
-9. Design accessibility, security, performance, resilience and data integrity from the start.
-10. Prefer deterministic tests and controlled boundaries over sleeps and broad retries.
-11. Do not use aggregate score to hide a critical failure.
-12. Continuously refine coverage using defects, telemetry, change patterns and escaped risks.
+1. Prevenir defeitos com requisitos claros, exemplos, revisão de design e limites simples.
+2. Testar na camada eficaz mais baixa; adicionar cobertura em camadas superiores para confiança de integração e do usuário.
+3. Priorizar por impacto de negócio, probabilidade, detectabilidade e exposição da mudança.
+4. Tornar falhas relevantes para produção observáveis e reproduzíveis em ambientes seguros.
+5. Tratar código, dados e ferramentas de teste como ativos com qualidade de produção.
+6. Separar falhas do produto de falhas de teste e infraestrutura nos relatórios.
+7. Preservar evidência, identidade do candidato/build da release, ambiente e versão da política.
+8. Usar automação para verificações repetíveis; usar exploração humana para descoberta, ambiguidade e experiência.
+9. Projetar acessibilidade, segurança, performance, resiliência e integridade de dados desde o início.
+10. Preferir testes determinísticos e limites controlados a sleeps e retries amplos.
+11. Não usar pontuação agregada para ocultar falha crítica.
+12. Refinar continuamente a cobertura usando defeitos, telemetria, padrões de alteração e riscos que escaparam.
 
-## Quality activities across the lifecycle
+## Baseline executável da Fase 01
 
-| Stage | Activities | Evidence |
+A fundação atual é validada por `./mvnw verify` ou `.\mvnw.cmd verify`. A suíte cobre bootstrap do contexto, contratos HTTP reais em porta aleatória, liveness/readiness, allowlist e matriz negativa do Actuator, `info`, Problem Details para 400/404/405/406/415/500, limites e entradas adversariais do `X-Correlation-ID`, presença do header, MDC, isolamento entre solicitações, concorrência determinística, `Error`, redispatch, resposta committed, sanitização de path e campos seguros/diagnosticáveis dos logs estruturados. Controllers que exercitam erros existem somente no escopo de testes.
+
+Testes unitários exercitam a política pura de correlação e a contribuição segura de build. Testes de componente/integração exercitam o filtro e o servidor HTTP real. A regra ArchUnit atual protege apenas uma direção útil e existente: `foundation.correlation` não depende de Spring, Jakarta nem `foundation.web`. Não existe meta percentual artificial de cobertura, retry automático ou `sleep` arbitrário.
+
+## Atividades de qualidade no ciclo de vida
+
+| Etapa | Atividades | Evidências |
 | --- | --- | --- |
-| Discovery | Persona/risk analysis, examples, non-scope, abuse cases | reviewed requirements, assumptions, open questions |
-| Design | Architecture/testability review, threat model, failure modes, contract/data design | design findings, ADRs, test approach |
-| Implementation | Static analysis, unit/component tests, secure review, local exploratory checks | build/test reports and reviewed diff |
-| Integration | API, database, contract, messaging and migration checks | versioned execution reports and traces |
-| System | Critical E2E, accessibility, exploratory, performance and resilience scenarios | evidence linked to build/release |
-| Release | Gate evaluation, traceability, residual-risk review and human decision | immutable evidence snapshot and rationale |
-| Operation | Telemetry review, incident learning, synthetic checks where justified | alerts, traces, defect and regression links |
+| Descoberta | Análise de personas/riscos, exemplos, fora de escopo, casos de abuso | requisitos revisados, premissas, questões em aberto |
+| Design | Revisão de arquitetura/testabilidade, modelo de ameaças, modos de falha, design de contratos/dados | achados de design, ADRs, abordagem de teste |
+| Implementação | Análise estática, testes de unidade/componente, revisão segura, verificações exploratórias locais | relatórios de build/testes e diff revisado |
+| Integração | Verificações de API, banco de dados, contrato, mensageria e migração | relatórios versionados de execução e traces |
+| Sistema | E2E críticos, acessibilidade, exploração, performance e resiliência | evidências vinculadas ao build/release |
+| Release | Avaliação de gates, rastreabilidade, revisão de risco residual e decisão humana | snapshot imutável de evidências e justificativa |
+| Operação | Revisão de telemetria, aprendizado com incidentes, verificações sintéticas quando justificadas | alertas, traces, links de defeito e regressão |
 
-## Risk-based testing
+## Testes Baseados em Risco (Risk Based Testing)
 
-### Risk model
+### Modelo de risco
 
-Each capability is assessed using:
+Cada capacidade é avaliada por:
 
-- **Impact:** business loss, security/privacy harm, data corruption, release credibility or recovery cost.
-- **Likelihood:** complexity, novelty, change frequency, integration count and prior defects.
-- **Detectability:** how likely existing controls reveal the problem before users do.
-- **Exposure:** usage frequency and number of affected users/data items.
+- **Impacto:** perda de negócio, dano de segurança/privacidade, corrupção de dados, credibilidade da release ou custo de recuperação.
+- **Probabilidade:** complexidade, novidade, frequência de mudança, quantidade de integrações e defeitos anteriores.
+- **Detectabilidade:** probabilidade de controles existentes revelarem o problema antes dos usuários.
+- **Exposição:** frequência de uso e quantidade de usuários/dados afetados.
 
-An initial qualitative rating (Critical, High, Medium, Low) is recorded in planning. A numerical model may support prioritization later but must remain explainable.
+Uma classificação qualitativa inicial (Crítico, Alto, Médio, Baixo) é registrada no planejamento. Um modelo numérico pode apoiar a priorização no futuro, mas deve permanecer explicável.
 
-### Initial high-risk areas
+### Áreas iniciais de alto risco
 
-| Area | Principal risks | Required emphasis |
+| Área | Principais riscos | Ênfase exigida |
 | --- | --- | --- |
-| Authentication/RBAC | account compromise, privilege escalation, enumeration | unit policy, API negative/abuse, security and audit checks |
-| Price/stock/SKU | silent corruption, duplicates, lost updates | boundary/property tests, database constraints, concurrency and API tests |
-| Media upload | malicious file, resource exhaustion, unauthorized access | content validation, authorization, security and resilience tests |
-| Outbox/messaging | lost/duplicate changes, retry storm, stuck work | transactional integration, idempotency, restart and fault tests |
-| Quality ingestion | wrong build attribution, duplicate/stale/malformed evidence | schema, idempotency, data-quality and authorization checks |
-| Quality/release decision | critical risk hidden by score, non-reproducible result | deterministic policy tests, hard-gate tests, audit/traceability |
-| Fault Lab | unintended blast radius or persistent fault | authorization, production-denial, TTL and emergency-stop tests |
+| Autenticação/RBAC | comprometimento de conta, elevação de privilégio, enumeração | política em unidade, API negativa/abuso, verificações de segurança e auditoria |
+| Preço/estoque/SKU | corrupção silenciosa, duplicidades, atualizações perdidas | testes de limite/propriedade, constraints do banco, concorrência e API |
+| Upload de mídia | arquivo malicioso, exaustão de recursos, acesso não autorizado | validação de conteúdo, autorização, testes de segurança e resiliência |
+| Outbox/mensageria | alterações perdidas/duplicadas, tempestade de retry, trabalho travado | integração transacional, idempotência, reinício e testes de falha |
+| Ingestão de qualidade | atribuição ao build errado, evidência duplicada/desatualizada/malformada | schema, idempotência, qualidade de dados e autorização |
+| Decisão de qualidade/release | risco crítico ocultado pela pontuação, resultado não reproduzível | testes determinísticos da política, gates críticos, auditoria/rastreabilidade |
+| Laboratório de Falhas | blast radius não pretendido ou falha persistente | autorização, negação em produção, TTL e parada de emergência |
 
-Risk determines depth, independence and gate placement. Low risk does not mean no test; it may mean focused unit/API coverage and exploratory sampling rather than broad E2E automation.
+O risco determina profundidade, independência e posicionamento no gate. Baixo risco não significa ausência de teste; pode significar cobertura focada de unidade/API e amostragem exploratória em vez de ampla automação E2E.
 
-## Test architecture: a practical pyramid
+## Arquitetura de testes: uma pirâmide prática
 
-```mermaid
+~~~mermaid
 flowchart TB
-    E2E["Few: critical end-to-end journeys"]
-    API["Focused: API, contract, accessibility, resilience and performance scenarios"]
-    INT["Strong: component and integration tests at module/data/message boundaries"]
-    UNIT["Broad: fast unit and policy tests"]
+    E2E["Poucos: jornadas críticas ponta a ponta"]
+    API["Focados: cenários de API, contrato, acessibilidade, resiliência e performance"]
+    INT["Fortes: testes de componente e integração nos limites de módulo/dados/mensagens"]
+    UNIT["Amplos: testes rápidos de unidade e políticas"]
     UNIT --> INT --> API --> E2E
-```
+~~~
 
-This is a feedback and isolation model, not a fixed percentage target. Most business permutations belong below the UI. E2E tests prove a small set of critical journeys and boundary integrations. Non-functional testing cuts across levels rather than sitting at the pyramid top.
+Este é um modelo de feedback e isolamento, não uma meta de porcentagem fixa. A maioria das permutações de negócio pertence abaixo da UI. Testes E2E comprovam um pequeno conjunto de jornadas críticas e integrações entre limites. Testes não funcionais atravessam os níveis em vez de ficar no topo da pirâmide.
 
-## Test levels and types
+## Níveis e tipos de teste
 
-### Unit testing
+### Testes unitários
 
-Scope: pure domain rules, value objects, validators, policies, mappers and state transitions with no real network/database.
+Escopo: regras puras de domínio, value objects, validadores, políticas, mapeadores e transições de estado sem rede/banco real.
 
-Key examples:
+Exemplos principais:
 
-- SKU normalization and uniqueness decision behavior;
-- money/stock boundaries and product transition rules;
-- permission and gate evaluation policies;
-- quality score/risk formula, missing-data handling and hard-block override;
-- retry classification/backoff calculation;
-- event schema mapping and redaction.
+- normalização de SKU e comportamento da decisão de unicidade;
+- limites de dinheiro/estoque e regras de transição do produto;
+- políticas de permissão e avaliação de gates;
+- fórmula de Pontuação de Qualidade/risco, tratamento de dados ausentes e prevalência de bloqueio crítico;
+- classificação de retry/cálculo de backoff;
+- mapeamento de schema de evento e redação.
 
-Characteristics: milliseconds, deterministic, isolated, readable and broad boundary coverage. Property-based/parameterized tests are preferred for high-dimensional invariants. Mock only owned ports, not every internal method.
+Características: milissegundos, determinísticos, isolados, legíveis e com ampla cobertura de limites. Testes de propriedade/parametrizados são preferidos para invariantes com muitas dimensões. Faça mock apenas de portas sob nossa responsabilidade, não de todo método interno.
 
-### Component testing
+### Testes de componente
 
-Scope: a module through its public application/API boundary with external dependencies replaced by realistic fakes or ephemeral dependencies as appropriate.
+Escopo: um módulo por seu limite público de aplicação/API, com dependências externas substituídas por fakes realistas ou dependências efêmeras conforme apropriado.
 
-Purpose: verify wiring, serialization, authorization filters, error mapping and module behavior without starting the complete product. Component tests must not bypass the same validation/authorization paths used in production merely for convenience.
+Finalidade: verificar wiring, serialização, filtros de autorização, mapeamento de erros e comportamento do módulo sem iniciar o produto completo. Testes de componente não devem contornar os mesmos caminhos de validação/autorização usados em produção apenas por conveniência.
 
-### Integration testing
+### Testes de integração
 
-Scope: actual integration with PostgreSQL, RabbitMQ, MinIO and the external mock adapter, introduced only in their phases.
+Escopo: integração real com PostgreSQL, RabbitMQ, MinIO e o adaptador do mock externo, introduzidos somente em suas fases.
 
-Required scenarios include:
+Cenários exigidos incluem:
 
-- migrations and database constraints;
-- transaction rollback and optimistic concurrency;
-- outbox atomicity, publisher restart and stuck-item reconciliation;
-- duplicate delivery/idempotency, retry and dead-letter behavior;
-- object upload/processing/cleanup and unavailable storage;
-- worker timeout and downstream error classification.
+- migrações e constraints do banco;
+- rollback de transação e concorrência otimista;
+- atomicidade da outbox, reinício do publicador e reconciliação de item travado;
+- entrega duplicada/idempotência, retry e comportamento de dead-letter;
+- upload/processamento/limpeza de objeto e armazenamento indisponível;
+- timeout do worker e classificação de erro downstream.
 
-Use production-compatible dependency versions in isolated containers where feasible. A mocked repository is not evidence that SQL constraints or transactions work.
+Use versões de dependências compatíveis com produção em containers isolados quando viável. Um repositório com mock não é evidência de que constraints SQL ou transações funcionam.
 
-### API testing
+### Testes de API
 
-Scope: HTTP behavior independent of the UI.
+Escopo: comportamento HTTP independente da UI.
 
-Cover:
+Cobrir:
 
-- happy, negative, boundary and state-transition paths;
-- authentication versus authorization distinctions;
-- object-level permission, mass assignment and injection inputs;
-- validation/error schema and correlation ID;
-- pagination maximums, deterministic ordering and filter combinations;
-- concurrency and idempotency;
-- content negotiation, size/rate controls and compatibility.
+- caminhos feliz, negativo, de limite e transição de estado;
+- diferenças entre autenticação e autorização;
+- permissão no nível do objeto, mass assignment e entradas de injeção;
+- schema de validação/erro e ID de correlação;
+- máximos de paginação, ordenação determinística e combinações de filtros;
+- concorrência e idempotência;
+- negociação de conteúdo, controles de tamanho/taxa e compatibilidade.
 
-API tests carry most cross-feature functional coverage because they are faster and more diagnostic than UI E2E.
+Testes de API carregam a maior parte da cobertura funcional entre funcionalidades porque são mais rápidos e diagnosticáveis que E2E de UI.
 
-### Contract testing
+### Testes de contrato
 
-Contracts include HTTP OpenAPI, event schemas, the External Sales Center Mock and quality-source ingestion formats.
+Contratos incluem OpenAPI HTTP, schemas de eventos, Mock do Centro de Vendas Externo e formatos de ingestão das fontes de qualidade.
 
-- Provider schema/conformance checks protect AEGIS contracts.
-- Consumer-driven examples protect assumptions about the downstream mock where useful.
-- Compatibility tests detect breaking changes before merge.
-- Contract tests validate failure/error behavior, timeouts and version rejection, not only successful payload fields.
-- A mock is not considered correct merely because it matches the implementation; both are checked against the reviewed contract.
+- Verificações de schema/conformidade do provedor protegem os contratos do AEGIS.
+- Exemplos orientados pelo consumidor protegem premissas sobre o mock downstream quando úteis.
+- Testes de compatibilidade detectam mudanças incompatíveis antes do merge.
+- Testes de contrato validam comportamento de falha/erro, timeouts e rejeição de versão, não apenas campos de payload bem-sucedidos.
+- Um mock não é considerado correto apenas porque corresponde à implementação; ambos são verificados contra o contrato revisado.
 
-### End-to-end testing
+### Testes ponta a ponta
 
-Use Playwright + TypeScript for a deliberately small set of browser journeys after frontend exists. Initial candidate journeys:
+Use Playwright + TypeScript para um conjunto deliberadamente pequeno de jornadas no navegador depois que o frontend existir. Jornadas candidatas iniciais:
 
-1. authorized catalog operator creates and updates a product;
-2. unauthorized user cannot mutate catalog state;
-3. media operator uploads an image and observes processing outcome;
-4. release manager reviews evidence, blocking gate, score/risk and records a decision;
-5. QA navigates requirement-to-result-to-defect traceability.
+1. operador autorizado cria e atualiza um produto;
+2. usuário não autorizado não consegue alterar estado do catálogo;
+3. operador de mídia faz upload de imagem e observa o resultado do processamento;
+4. gerente de release revisa evidência, gate bloqueante, pontuação/risco e registra decisão;
+5. profissional de QA navega pela rastreabilidade requisito-resultado-defeito.
 
-E2E tests should use accessible roles/labels, stable domain-facing test hooks only when necessary, controlled data and explicit condition waits. Arbitrary sleeps are forbidden. UI tests do not duplicate every field combination covered at lower levels.
+Testes E2E devem usar roles/labels acessíveis, hooks de teste estáveis voltados ao domínio somente quando necessários, dados controlados e esperas explícitas por condição. Sleeps arbitrários são proibidos. Testes de UI não duplicam cada combinação de campo coberta em camadas inferiores.
 
-### Security testing
+### Testes de segurança
 
-Security verification follows [SECURITY.md](SECURITY.md) and includes:
+A verificação de segurança segue [SECURITY.md](SECURITY.md) e inclui:
 
-- static analysis, secret scanning and dependency/container scanning;
-- authentication/session, RBAC and object-level authorization tests;
-- input validation, injection and unsafe error disclosure checks;
-- upload polyglot/signature/size/decompression and retrieval tests;
-- API abuse/rate-limit, CSRF/CORS/security-header tests as architecture requires;
-- message/evidence provenance and replay/forgery checks;
-- manual threat-driven testing for high-risk features.
+- análise estática, varredura de secrets e varredura de dependências/containers;
+- testes de autenticação/sessão, RBAC e autorização no nível de objeto;
+- verificações de validação de entrada, injeção e exposição insegura de erros;
+- testes de polyglot/assinatura/tamanho/descompressão de upload e recuperação;
+- testes de abuso/limite de taxa de API, CSRF/CORS/headers de segurança conforme a arquitetura;
+- proveniência e replay/falsificação de mensagens/evidências;
+- testes manuais orientados por ameaças para funcionalidades de alto risco.
 
-Automated scanners produce candidates, not automatically accepted defects. Findings require triage, exploitability context, remediation and retest. Critical exploitable findings block under [QUALITY_GATES.md](QUALITY_GATES.md).
+Scanners automatizados produzem candidatos, não defeitos automaticamente aceitos. Achados exigem triagem, contexto de explorabilidade, correção e novo teste. Achados críticos exploráveis bloqueiam conforme [QUALITY_GATES.md](QUALITY_GATES.md).
 
-### Performance testing
+### Testes de performance
 
-Use k6 for version-controlled API workload models after relevant endpoints stabilize. Test categories:
+Use k6 para modelos de workload de API versionados depois que os endpoints relevantes se estabilizarem. Categorias de teste:
 
-- smoke: script/environment correctness;
-- baseline: reproducible normal workload;
-- load: expected concurrency/volume;
-- stress: discover limits, never a routine release requirement without need;
-- soak: leaks/queue buildup over time where justified;
-- spike: sudden ingest/catalog burst where risk warrants.
+- smoke: correção do script/ambiente;
+- baseline: workload normal reproduzível;
+- load: concorrência/volume esperados;
+- stress: descoberta de limites, nunca requisito rotineiro de release sem necessidade;
+- soak: vazamentos/acúmulo de fila ao longo do tempo quando justificado;
+- spike: pico súbito de ingestão/catálogo quando o risco justificar.
 
-Every result records release candidate/commit/build, environment, dataset, dependency versions, workload, warm-up, duration and resource context. Evaluate latency percentiles, throughput, error rate, saturation, queue age and recovery—not average latency alone. Thresholds must use a controlled reference profile and distinguish product errors from load-generator/environment limits.
+Todo resultado registra candidato/commit/build da release, ambiente, dataset, versões das dependências, workload, warm-up, duração e contexto de recursos. Avalie percentis de latência, throughput, taxa de erro, saturação, idade da fila e recuperação — não somente latência média. Limites devem usar perfil controlado de referência e distinguir erros do produto de limites do gerador de carga/ambiente.
 
-Initial provisional targets are in [REQUIREMENTS.md](REQUIREMENTS.md#non-functional-requirements); baselines must validate them before hard gating.
+Metas provisórias iniciais estão em [REQUIREMENTS.md](REQUIREMENTS.md#requisitos-não-funcionais); baselines devem validá-las antes de se tornarem gates rígidos.
 
-### Resilience testing
+### Testes de resiliência
 
-Resilience checks validate behavior during and after controlled faults:
+Verificações de resiliência validam o comportamento durante e depois de falhas controladas:
 
-- downstream unavailable, timeout and slow responses;
-- broker unavailable, backlog and duplicate delivery;
-- database latency or connection exhaustion;
-- image processor/object storage failure;
-- random internal HTTP 500;
-- worker restart during processing;
-- Quality Engine or evidence source unavailable.
+- downstream indisponível, timeout e respostas lentas;
+- broker indisponível, backlog e entrega duplicada;
+- latência do banco de dados ou esgotamento de conexões;
+- falha do processador de imagem/object storage;
+- HTTP 500 interno aleatório;
+- reinício do worker durante processamento;
+- Motor de Qualidade ou fonte de evidência indisponível.
 
-Each experiment states hypothesis, steady state, injected fault, blast radius, expected telemetry, abort condition and recovery criterion. Fault Lab is non-production, permission-protected, defaults off, has TTL and emergency stop. Passing means the system fails as designed and recovers without silent loss—not that no error occurred.
+Cada experimento declara hipótese, estado estável, falha injetada, blast radius, telemetria esperada, condição de aborto e critério de recuperação. O Laboratório de Falhas é não produtivo, protegido por permissão, desligado por padrão, tem TTL e parada de emergência. Passar significa que o sistema falha conforme projetado e se recupera sem perda silenciosa — não que nenhum erro ocorreu.
 
-### Accessibility testing
+### Testes de acessibilidade
 
-Target WCAG 2.2 AA for supported critical workflows. Combine:
+Buscar WCAG 2.2 AA nos fluxos críticos suportados. Combinar:
 
-- semantic design/component review;
-- automated rules in component and Playwright checks;
-- keyboard-only navigation and visible focus;
-- screen-reader smoke checks on critical journeys;
-- zoom/reflow, contrast, error identification and status announcement;
-- reduced-motion and non-color-only cues where applicable.
+- revisão semântica de design/componentes;
+- regras automatizadas em verificações de componente e Playwright;
+- navegação somente por teclado e foco visível;
+- smoke com leitor de tela nas jornadas críticas;
+- zoom/reflow, contraste, identificação de erro e anúncio de status;
+- movimento reduzido e indicadores que não dependam apenas de cor quando aplicável.
 
-Automated accessibility tools detect only a subset; manual evaluation is required before a critical UI workflow is called accessible.
+Ferramentas automatizadas de acessibilidade detectam apenas uma parte dos problemas; avaliação manual é exigida antes de chamar um fluxo crítico de UI de acessível.
 
-### Data quality testing
+### Testes de qualidade de dados
 
-Validate both commerce data and quality evidence:
+Validar dados de comércio e evidências de qualidade:
 
-- database constraints, nullability, precision and normalized uniqueness;
-- migrations against representative data and rollback/forward recovery plan;
-- before/after history accuracy and audit attribution;
-- event/database reconciliation and duplicate detection;
-- evidence schema, source, release/build identity, timestamp/freshness and checksum/reference;
-- aggregation correctness for pass rate, severity counts, percentiles and score inputs;
-- missing, late, duplicated, conflicting and out-of-order inputs;
-- retention/redaction and orphan detection.
+- constraints de banco, nulidade, precisão e unicidade normalizada;
+- migrações contra dados representativos e plano de recuperação por rollback/avanço;
+- precisão de histórico antes/depois e atribuição de auditoria;
+- reconciliação entre evento/banco e detecção de duplicidade;
+- schema de evidência, fonte, identidade de release/build, timestamp/atualização e checksum/referência;
+- correção de agregações de taxa de aprovação, contagem de severidade, percentis e entradas da pontuação;
+- entradas ausentes, tardias, duplicadas, conflitantes e fora de ordem;
+- retenção/redação e detecção de órfãos.
 
-Quality dashboards must never turn unknown or stale input into zero/pass.
+Dashboards de qualidade nunca devem transformar entrada desconhecida ou desatualizada em zero/aprovação.
 
-### Exploratory testing
+### Testes exploratórios
 
-Time-boxed charters target ambiguity, workflows, error recovery and cross-domain interactions. A charter records mission, build/environment, data, observations, evidence, defects and remaining questions. Suggested early tours include catalog boundary/concurrency, permission misuse, hostile uploads, retry/replay and release-decision explanation.
+Charters com prazo focam ambiguidade, fluxos, recuperação de erros e interações entre domínios. Um charter registra missão, build/ambiente, dados, observações, evidências, defeitos e questões restantes. Tours iniciais sugeridos incluem limites/concorrência do catálogo, uso indevido de permissão, uploads hostis, retry/replay e explicação da decisão de release.
 
-## Static checks and review
+## Verificações estáticas e revisão
 
-When code exists, fast pull-request checks should include compilation/type checking, formatting/linting, unit/component tests, dependency/secret scanning and contract compatibility as applicable. Review examines correctness, clarity, testability, security, telemetry, migration/recovery and documentation—not coverage percentage alone.
+As verificações atuais incluem Maven Enforcer, compilação, testes de unidade/componente/integração e ArchUnit. O workflow de CI está configurado para executar `verify` em Linux e Windows; o gate só fica satisfeito depois da execução remota bem-sucedida. Formatação/lint dedicado, varredura automatizada de dependências/secrets e compatibilidade de contrato ainda não foram introduzidos; tornam-se gates quando uma ferramenta e política forem aprovadas. A revisão examina correção, clareza, testabilidade, segurança, telemetria, migração/recuperação e documentação — não apenas percentual de cobertura.
 
-## Test environments
+## Ambientes de teste
 
-| Environment | Purpose | Data | Expected controls |
+| Ambiente | Finalidade | Dados | Controles esperados |
 | --- | --- | --- | --- |
-| Local | rapid development and focused testing | generated/seeded synthetic data | reproducible dependencies, safe defaults, no real secrets |
-| CI ephemeral | isolated automated validation per change | deterministic synthetic factories/seeds | pinned versions, parallel isolation, retained reports on failure |
-| Integration | cross-component, contract and migration scenarios | synthetic representative dataset | controlled resets, external mock, broker/storage as phases add them |
-| Performance | reproducible workload baseline | versioned larger synthetic dataset | stable resource profile, exclusive/noisy-neighbor awareness |
-| Demo/staging | portfolio journey and exploratory validation | synthetic demo identities/data | production-like configuration where practical, no production data |
-| Production (future) | real operation, not destructive test playground | real governed data | no Fault Lab; safe smoke/synthetic monitoring only if approved |
+| Local | desenvolvimento rápido e testes focados | dados sintéticos gerados/seed | dependências reproduzíveis, padrões seguros, sem secrets reais |
+| CI efêmera | validação automatizada isolada por alteração | factories/seeds sintéticos determinísticos | versões fixadas, isolamento paralelo, relatórios preservados em falha |
+| Integração | cenários entre componentes, contrato e migração | dataset sintético representativo | resets controlados, mock externo, broker/armazenamento conforme as fases os adicionarem |
+| Performance | baseline reproduzível de workload | dataset sintético maior e versionado | perfil estável de recursos, consciência de exclusividade/noisy neighbor |
+| Demonstração/staging | jornada de portfólio e validação exploratória | identidades/dados sintéticos de demonstração | configuração semelhante à produção quando prático, sem dados de produção |
+| Produção (futuro) | operação real, não ambiente destrutivo de testes | dados reais governados | sem Laboratório de Falhas; apenas smoke/monitoramento sintético seguro se aprovado |
 
-Environment parity is risk-based. Differences in versions, configuration, topology and feature flags are documented alongside results. No test requires a developer's unrecorded machine state.
+Paridade de ambiente é baseada em risco. Diferenças de versões, configuração, topologia e feature flags são documentadas junto aos resultados. Nenhum teste depende de estado não registrado da máquina de um desenvolvedor.
 
-## Test data strategy
+## Estratégia de dados de teste
 
-- Use synthetic, deterministic data by default; never copy production personal data into lower environments.
-- Provide builders/factories with domain-valid defaults and explicit overrides.
-- Generate unique test identity/SKU keys without relying on execution order.
-- Seed a small, versioned reference dataset for demos/contracts and a separate scalable dataset for performance.
-- Create data through the layer under test unless setup cost would obscure the target; lower-level setup must preserve required invariants.
-- Isolate parallel runs through unique namespaces/IDs and clean up safely; tests must tolerate diagnostic retention on failure.
-- Treat clock, timezone, locale, currency, Unicode and numeric boundaries as explicit dimensions.
-- Redact secrets/personal data in reports, screenshots, traces and failure messages.
-- Test cleanup never targets broad or ambiguous environments and never hides an earlier test failure.
+- Usar dados sintéticos e determinísticos por padrão; nunca copiar dados pessoais de produção para ambientes inferiores.
+- Fornecer builders/factories com padrões válidos de domínio e sobrescritas explícitas.
+- Gerar chaves únicas de identidade/SKU de teste sem depender da ordem de execução.
+- Manter um pequeno dataset de referência versionado para demonstrações/contratos e outro escalável para performance.
+- Criar dados pela camada sob teste, salvo quando o custo de preparação obscurecer o alvo; configuração em nível inferior deve preservar os invariantes exigidos.
+- Isolar execuções paralelas por namespaces/IDs únicos e limpar com segurança; testes devem tolerar retenção diagnóstica em caso de falha.
+- Tratar relógio, timezone, localidade, moeda, Unicode e limites numéricos como dimensões explícitas.
+- Redigir secrets/dados pessoais em relatórios, capturas de tela, traces e mensagens de falha.
+- A limpeza de teste nunca mira ambientes amplos ou ambíguos e nunca oculta falha anterior do teste.
 
-## Evidence policy
+## Política de evidências
 
-Minimum execution provenance:
+Proveniência mínima da execução:
 
-- requirement/test case IDs where applicable;
-- release candidate, source commit and immutable build/artifact identity;
-- test/tool version and command/profile;
-- environment and relevant dependency/config versions;
-- start/end time, result, duration and attempt history;
-- sanitized failure classification/message;
-- links/checksums for reports, screenshots, videos, logs and traces as appropriate;
-- correlation/trace ID for cross-boundary failures.
+- IDs de requisito/caso de teste quando aplicáveis;
+- candidato da release, commit de origem e identidade imutável do build/artefato;
+- versão do teste/ferramenta e comando/perfil;
+- ambiente e versões relevantes de dependência/configuração;
+- início/fim, resultado, duração e histórico de tentativas;
+- classificação/mensagem sanitizada da falha;
+- links/checksums de relatórios, capturas de tela, vídeos, logs e traces conforme apropriado;
+- ID de correlação/trace para falhas entre limites.
 
-Evidence is proportionate: do not collect sensitive or enormous artifacts by default. Passing runs may retain summaries; failures and release-gate executions retain diagnostic artifacts under an explicit retention/access policy. Screenshots alone are insufficient proof of backend/data correctness.
+A evidência é proporcional: não colete artefatos sensíveis ou enormes por padrão. Execuções aprovadas podem reter resumos; falhas e execuções de gate de release retêm artefatos diagnósticos sob política explícita de retenção/acesso. Capturas de tela isoladas são prova insuficiente de correção de backend/dados.
 
-## Traceability
+## Rastreabilidade
 
-The target chain is:
+A cadeia-alvo é:
 
-```text
-Requirement -> Test Case -> Test Execution -> Evidence -> Defect -> Release
-```
+~~~text
+Requisito -> Caso de Teste -> Execução de Teste -> Evidência -> Defeito -> Release
+~~~
 
-- Requirement IDs originate in [REQUIREMENTS.md](REQUIREMENTS.md).
-- Automated tests include stable case/requirement metadata without making names unreadable.
-- Runs and results attach to an exact release candidate/build; the release display version alone is insufficient.
-- Defects link the failed expectation, evidence and affected requirement/release.
-- Traceability reports show both links and gaps; a missing link is not synthesized.
-- Regression coverage is chosen using risk, affected modules/contracts and historical defects, not traceability alone.
+- IDs de requisitos se originam em [REQUIREMENTS.md](REQUIREMENTS.md).
+- Testes automatizados incluem metadados estáveis de caso/requisito sem tornar os nomes ilegíveis.
+- Execuções e resultados vinculam-se a um candidato/build exato da release; apenas a versão exibida da release é insuficiente.
+- Defeitos vinculam expectativa que falhou, evidência e requisito/release afetado.
+- Relatórios de rastreabilidade mostram links e lacunas; um link ausente não é sintetizado.
+- A cobertura de regressão é escolhida por risco, módulos/contratos afetados e defeitos históricos, não apenas por rastreabilidade.
 
-## Defect lifecycle
+## Ciclo de vida do defeito
 
-1. **Observed:** preserve environment, build, data, steps, expected/actual and evidence.
-2. **Triaged:** confirm reproducibility, classify product/test/environment/requirement issue, severity, priority and owner.
-3. **Accepted:** decide repair, defer, duplicate or not-a-defect with rationale and affected requirements/releases.
-4. **In progress:** implement the smallest correct change and add/adjust legitimate prevention/detection coverage.
-5. **Ready for retest:** identify build and impacted regression scope.
-6. **Verified/closed:** reproduce original scenario, verify fix and targeted regression; retain evidence/history.
-7. **Reopened:** if behavior persists/regresses, add new evidence without overwriting prior verification.
+1. **Observado:** preservar ambiente, build, dados, passos, esperado/real e evidência.
+2. **Triado:** confirmar reprodutibilidade, classificar problema de produto/teste/ambiente/requisito, severidade, prioridade e responsável.
+3. **Aceito:** decidir corrigir, adiar, marcar duplicado ou não-defeito, com justificativa e requisitos/releases afetados.
+4. **Em andamento:** implementar a menor alteração correta e adicionar/ajustar cobertura legítima de prevenção/detecção.
+5. **Pronto para novo teste:** identificar build e escopo de regressão afetado.
+6. **Verificado/fechado:** reproduzir o cenário original, verificar a correção e a regressão direcionada; reter evidência/histórico.
+7. **Reaberto:** se o comportamento persistir/voltar, adicionar nova evidência sem sobrescrever a verificação anterior.
 
-Severity describes impact; priority describes scheduling. A flaky failure or environment failure is still tracked and owned, not relabeled as product pass.
+Severidade descreve impacto; prioridade descreve agendamento. Uma falha instável ou de ambiente ainda é rastreada e tem responsável; não é reclassificada como aprovação do produto.
 
-## Automation principles
+## Princípios de automação
 
-- Automate when repetition, regression risk, data permutations or rapid feedback justify maintenance cost.
-- Keep assertions focused on business outcomes and contracts, not incidental implementation.
-- Prefer public interfaces and accessible locators; avoid database assertions as the only proof of user-visible behavior.
-- No shared mutable test order, unconditional sleep, infinite retry or catch-and-ignore.
-- Retry exists to characterize transient behavior, not to conceal it; all attempts remain visible.
-- Test utilities remain simpler than the behavior they verify and receive review/testing proportional to risk.
-- Generated reports are artifacts, not source-controlled noise.
-- Coverage metrics reveal unexercised code/requirements but do not prove assertion quality.
+- Automatizar quando repetição, risco de regressão, permutações de dados ou feedback rápido justificarem o custo de manutenção.
+- Manter asserções focadas em resultados e contratos de negócio, não em implementação incidental.
+- Preferir interfaces públicas e locators acessíveis; evitar asserções no banco como única prova de comportamento visível ao usuário.
+- Não usar ordem de teste com estado mutável compartilhado, sleep incondicional, retry infinito nem captura com descarte.
+- Retry existe para caracterizar comportamento transitório, não escondê-lo; todas as tentativas permanecem visíveis.
+- Utilitários de teste permanecem mais simples que o comportamento verificado e recebem revisão/testes proporcionais ao risco.
+- Relatórios gerados são artefatos, não ruído versionado no código-fonte.
+- Métricas de cobertura revelam código/requisitos não exercitados, mas não comprovam a qualidade das asserções.
 
-## Flaky test policy
+## Política de testes instáveis
 
-A flaky test has inconsistent outcomes for the same relevant product/configuration/input. Suspected flakiness triggers:
+Um teste instável apresenta resultados inconsistentes para o mesmo produto/configuração/entrada relevante. Suspeita de instabilidade exige:
 
-1. preserve every attempt and initial failure evidence;
-2. create a tracked issue with owner, severity, affected suite and first/last seen;
-3. classify likely source: product nondeterminism, test, data, environment or tool;
-4. reproduce under controlled repetition and use telemetry to locate the race/boundary;
-5. fix root cause and prove stability through an agreed repeated run;
-6. add learning to utilities/standards when systemic.
+1. preservar todas as tentativas e a evidência da primeira falha;
+2. criar item rastreado com responsável, severidade, suíte afetada e primeira/última ocorrência;
+3. classificar a provável fonte: não determinismo do produto, teste, dados, ambiente ou ferramenta;
+4. reproduzir sob repetição controlada e usar telemetria para localizar a condição de corrida/limite;
+5. corrigir a causa raiz e comprovar estabilidade por execução repetida acordada;
+6. adicionar o aprendizado a utilitários/padrões quando sistêmico.
 
-Quarantine is a last, time-bounded containment action approved by a responsible owner. A quarantined test:
+Quarentena é ação de contenção excepcional, com prazo, aprovada por responsável. Um teste em quarentena:
 
-- remains executed and reported separately where feasible;
-- never counts as passed;
-- has an issue, owner and expiry;
-- cannot remove coverage for a critical hard gate without replacement evidence and explicit release risk;
-- is restored or replaced after root-cause repair.
+- continua executado e relatado separadamente quando possível;
+- nunca conta como aprovado;
+- tem item, responsável e expiração;
+- não pode remover cobertura de gate crítico sem evidência substituta e risco explícito de release;
+- é restaurado ou substituído após a correção da causa raiz.
 
-Global retries that turn eventual success into an unqualified pass are forbidden. Report first-attempt pass rate and retry outcome separately.
+Retries globais que transformam sucesso eventual em aprovação sem qualificação são proibidos. Relate separadamente taxa de aprovação na primeira tentativa e resultado do retry.
 
-## Entry and exit expectations
+## Expectativas de entrada e saída
 
-Before a feature enters implementation, applicable requirements, examples, risks, security concerns, observability and test approach should be understood. Before it is considered done, relevant build/lint/tests, security review, documentation, telemetry and traceability pass according to [AGENTS.md](../AGENTS.md) and [QUALITY_GATES.md](QUALITY_GATES.md).
+Antes que uma funcionalidade entre em implementação, requisitos, exemplos, riscos, preocupações de segurança, observabilidade e abordagem de teste aplicáveis devem estar compreendidos. Antes de ser considerada pronta, build/lint/testes relevantes, revisão de segurança, documentação, telemetria e rastreabilidade passam conforme [AGENTS.md](../AGENTS.md) e [QUALITY_GATES.md](QUALITY_GATES.md).
 
-## Strategy metrics
+## Métricas da estratégia
 
-Useful signals include escaped defect patterns, failure detection layer, change failure/reopen rate, first-attempt stability, critical requirement coverage, evidence freshness, mean time to diagnose and gate exception age. These metrics guide improvement and must not be used to rank individuals or incentivize superficial test counts.
+Sinais úteis incluem padrões de defeitos que escaparam, camada de detecção da falha, taxa de mudança com falha/reabertura, estabilidade na primeira tentativa, cobertura de requisitos críticos, atualização das evidências, tempo médio para diagnóstico e idade das exceções de gate. Essas métricas orientam melhoria e não devem ser usadas para classificar pessoas nem incentivar contagens superficiais de testes.
 
-## Open questions and calibration needs
+## Questões em aberto e necessidades de calibração
 
-- Exact supported browsers/devices and accessibility manual-test matrix.
-- Reference hardware/dataset/workloads for performance thresholds.
-- Evidence retention, storage and access policy.
-- Required independence for release/security evaluation in a portfolio-sized team.
-- Source of truth for manual test cases and defects before Quality Control Center exists.
-- Acceptable quarantine duration by risk class.
-- Minimum score weights and required evidence freshness for each release class.
+- Navegadores/dispositivos suportados e matriz manual de acessibilidade exatos.
+- Hardware/dataset/workloads de referência para limites de performance.
+- Retenção, armazenamento e política de acesso de evidências.
+- Independência exigida para avaliação de release/segurança em uma equipe do tamanho do portfólio.
+- Fonte da verdade para casos de teste manuais e defeitos antes de o Centro de Controle de Qualidade existir.
+- Duração aceitável da quarentena por classe de risco.
+- Pesos mínimos da pontuação e atualização exigida das evidências por classe de release.

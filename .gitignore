@@ -26,6 +26,7 @@ out/
 target/
 *.class
 *.jar
+!.mvn/wrapper/maven-wrapper.jar
 *.war
 *.ear
 hs_err_pid*

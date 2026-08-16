@@ -1,262 +1,268 @@
-# AEGIS Quality Gates and Release Intelligence
+# Gates de Qualidade e Inteligência de Release do AEGIS
 
-## Purpose
+## Finalidade
 
-Quality gates convert evidence and risk policy into timely decisions. They are progressive: fast feedback runs early and broader validation runs as a change approaches release. Gates protect the product; they are not targets to game.
+Gates de Qualidade transformam evidências e política de risco em decisões no momento adequado. Eles são progressivos: feedback rápido executa cedo e validações mais amplas executam conforme uma alteração se aproxima da release. Gates protegem o produto; não são alvos a manipular.
 
-This is an initial policy proposal. Thresholds and the Quality Score require calibration with real baselines before enforcement. Gate definitions, formulas and exception rules must be versioned so a historical release decision remains explainable.
+Esta é uma proposta inicial de política. Limites e a Pontuação de Qualidade exigem calibração com baselines reais antes da aplicação. Definições de gates, fórmulas e regras de exceção devem ser versionadas para que uma decisão histórica de release permaneça explicável.
 
-## Fundamental rule
+## Regra fundamental
 
-**Quality Score is a derived policy input. Hard blocking rules are authoritative.**
+**A Pontuação de Qualidade é uma entrada derivada da política. Regras de bloqueio crítico têm autoridade.**
 
-A calibrated policy may use a low score to produce a `BLOCK` recommendation, but no score is itself evidence and no high score can cancel a hard block. A candidate with a score of 99/100 is still blocked by one active critical security finding, critical test failure or other non-overridable condition. Unknown, stale or missing required evidence is never treated as passing.
+Uma política calibrada pode usar pontuação baixa para produzir recomendação BLOCK, mas nenhuma pontuação é evidência por si só e nenhuma pontuação alta cancela um bloqueio crítico. Um candidato com 99/100 ainda é bloqueado por um achado crítico de segurança ativo, falha crítica de teste ou outra condição não substituível. Evidência obrigatória desconhecida, desatualizada ou ausente nunca é tratada como aprovada.
 
-## Gate outcome model
+## Modelo de resultado dos gates
 
-Every gate produces one of:
+Todo gate produz um dos seguintes resultados:
 
-- `PASS`: required conditions were evaluated and met;
-- `FAIL`: evaluated conditions did not meet policy;
-- `INSUFFICIENT_EVIDENCE`: required input is missing, stale, incompatible or cannot be attributed to the release;
-- `NOT_APPLICABLE`: policy explicitly excludes the gate/capability for this candidate and records rationale, authorized actor, exact policy version and audit reference;
-- `ERROR`: the gate could not evaluate because of a system/tool failure.
+- PASS: as condições exigidas foram avaliadas e atendidas;
+- FAIL: as condições avaliadas não atenderam à política;
+- INSUFFICIENT_EVIDENCE: entrada obrigatória está ausente, desatualizada, incompatível ou não pode ser atribuída à release;
+- NOT_APPLICABLE: a política exclui explicitamente o gate/capacidade para este candidato e registra justificativa, ator autorizado, versão exata da política e referência de auditoria;
+- ERROR: o gate não pôde ser avaliado por falha do sistema/ferramenta.
 
-`NOT_APPLICABLE` is not chosen by omission or by an evidence-producing client. It is available only through an authorized, audited policy evaluation. `ERROR` and `INSUFFICIENT_EVIDENCE` are distinct from product failure, but block when the policy requires that evidence.
+NOT_APPLICABLE não é escolhido por omissão nem por um cliente que produz evidências. Só está disponível por meio de avaliação de política autorizada e auditada. ERROR e INSUFFICIENT_EVIDENCE são distintos de falha do produto, mas bloqueiam quando a política exige a evidência.
 
-## Progressive maturity
+## Maturidade progressiva
 
-Quality capabilities become applicable only when their prerequisites exist. Inapplicability never means approval.
+Capacidades de qualidade tornam-se aplicáveis somente quando seus pré-requisitos existem. Inaplicabilidade nunca significa aprovação.
 
-| Maturity | Evidence summary | Hard gate evaluation | Quality Score | Risk classification | Engine recommendation |
+| Maturidade | Resumo de evidências | Avaliação de gates críticos | Pontuação de Qualidade | Classificação de Risco | Recomendação do Motor |
 | --- | --- | --- | --- | --- | --- |
-| Foundation / Phase 01 | Documentation/build evidence only | Applicable gates run | `NOT_APPLICABLE` | `NOT_APPLICABLE` | `NOT_APPLICABLE` |
-| Catalog through evidence foundation (v0.2–v0.6) | Required for the exact candidate/build as each source exists | Applicable and independent of score | `NOT_APPLICABLE` | `NOT_APPLICABLE` | `NOT_APPLICABLE` |
-| Quality Engine maturity (v0.7+) | Required and current | Required first | Calculated only under a validated formula version | Calculated only under a validated risk policy | `APPROVE`, `REVIEW` or `BLOCK` under a versioned policy |
+| Fundação / Fase 01 | Somente evidência de documentação/build | Gates aplicáveis executam | NOT_APPLICABLE | NOT_APPLICABLE | NOT_APPLICABLE |
+| Catálogo até fundação de evidências (v0.2–v0.6) | Exigido para candidato/build exato conforme cada fonte existir | Aplicável e independente da pontuação | NOT_APPLICABLE | NOT_APPLICABLE | NOT_APPLICABLE |
+| Maturidade do Motor de Qualidade (v0.7+) | Exigido e atual | Exigida primeiro | Calculada somente sob versão de fórmula validada | Calculada somente sob política de risco validada | APPROVE, REVIEW ou BLOCK sob política versionada |
 
-Before v0.7, release review uses current evidence, hard gates, explicit residual risk and a human decision. It must not synthesize a score/risk or infer approval from `NOT_APPLICABLE` values.
+Antes da v0.7, a revisão de release usa evidências atuais, gates críticos, risco residual explícito e decisão humana. Não deve sintetizar pontuação/risco nem inferir aprovação a partir de valores NOT_APPLICABLE.
 
-Before the Quality Control Center exists, `NOT_APPLICABLE` in this table is a documented maturity rule rather than a fabricated runtime record. Once a summary API persists applicability, it must carry the authorized policy actor/version and audit reference.
+Antes de o Centro de Controle de Qualidade existir, NOT_APPLICABLE nesta tabela é uma regra documental de maturidade, não um registro de runtime fabricado. Quando uma API de resumo persistir aplicabilidade, deverá conter ator/versão autorizados da política e referência de auditoria.
 
-## Progressive gates
+### Gate aplicável à Fase 01
 
-### 1. Pull Request Gate
+Para a fundação executável, a evidência exigida é: Maven Wrapper fixado e íntegro, Maven Enforcer para Java/Maven aprovados, `mvnw verify` verde, testes de contexto/unidade/componente/HTTP, regra ArchUnit, Jar executável, smoke manual dos endpoints operacionais, revisão da árvore de dependências, `git diff --check` e revisão de segurança/documentação. O workflow de CI deve repetir `verify` em Linux e Windows com privilégio mínimo; configuração sem execução remota bem-sucedida não satisfaz o gate.
 
-Goal: prevent known defects and unsafe changes from entering the default branch while preserving fast feedback.
+Não há Pontuação de Qualidade, Classificação de Risco nem recomendação automática nesta fase. Varredura automatizada de secrets/dependências, SBOM, assinatura e proveniência de artefato ainda não são gates implementados; a revisão de dependências e secrets é manual até que ferramenta e política sejam aprovadas.
 
-Required when applicable:
+## Gates progressivos
 
-- reviewed change with requirement/issue and risk context;
-- compilation/type checking;
-- formatting and lint/static analysis;
-- changed-scope unit and component tests;
-- contract/schema compatibility checks;
-- secret scan and high-signal source/dependency checks;
-- migration validation when schema changes exist;
-- documentation and observability/security impact review;
-- no unexplained skipped/weakened tests or reduced critical assertions.
+### 1. Gate de Pull Request
 
-Target feedback: fast checks should normally complete within 10 minutes once a baseline exists; slower justified suites run in parallel or at later gates without removing essential PR protection.
+Objetivo: impedir que defeitos conhecidos e alterações inseguras entrem na branch padrão, preservando feedback rápido.
 
-Hard failures: build/type failure, relevant deterministic test failure, detected committed secret, incompatible contract without approved migration, unauthorized weakening of controls/tests.
+Exigido quando aplicável:
 
-### 2. Build Gate
+- alteração revisada com requisito/item e contexto de risco;
+- compilação/verificação de tipos;
+- formatação e lint/análise estática;
+- testes de unidade e componente do escopo alterado;
+- verificações de compatibilidade de contrato/schema;
+- varredura de secrets e verificações de código-fonte/dependência com alto sinal;
+- validação de migração quando houver alteração de schema;
+- revisão de impacto em documentação, observabilidade e segurança;
+- nenhum teste ignorado/enfraquecido nem asserção crítica reduzida sem explicação.
 
-Goal: prove a reproducible, identifiable candidate was built from reviewed source.
+Meta de feedback: verificações rápidas normalmente devem terminar em até 10 minutos quando existir uma baseline; suítes justificadamente mais lentas executam em paralelo ou em gates posteriores sem remover proteção essencial do PR.
 
-Required:
+Falhas críticas: falha de build/tipos, falha determinística de teste relevante, secret versionado detectado, contrato incompatível sem migração aprovada ou enfraquecimento não autorizado de controles/testes.
 
-- clean build from the selected commit;
-- artifact identity and source commit recorded;
-- dependency lock/resolution is reproducible;
-- artifact/container scanning when those artifacts exist;
-- required configuration/schema checks pass;
-- software bill of materials/provenance maturity added by the release phase.
+### 2. Gate de Build
 
-An artifact rebuilt from different source/dependency resolution is different evidence even if it uses the same display version.
+Objetivo: comprovar que um candidato reproduzível e identificável foi construído a partir de código revisado.
 
-### 3. Testing Gate
+Exigido:
 
-Goal: evaluate functional correctness and data/integration confidence for the candidate.
+- build limpo a partir do commit selecionado;
+- identidade do artefato e commit de origem registrados;
+- resolução/lock de dependências reproduzível;
+- varredura de artefato/container quando esses artefatos existirem;
+- verificações exigidas de configuração/schema aprovadas;
+- inventário de software/proveniência adicionado conforme a maturidade da fase de release.
 
-Required according to change and release scope:
+Um artefato reconstruído a partir de código ou resolução de dependências diferente é evidência diferente, mesmo que use a mesma versão de exibição.
 
-- unit, component and integration suites pass;
-- API and contract suites pass;
-- selected critical E2E journeys pass when the UI exists;
-- data-quality/migration/reconciliation checks pass;
-- requirement traceability has no unexplained critical gaps;
-- flaky/quarantined tests are reported separately with owner and expiry;
-- test results match the exact build and approved environment/profile.
+### 3. Gate de Testes
 
-Hard failures: critical test case failure; corruption/lost-update/lost-message behavior; required suite unavailable or attributed to another build; a quarantined critical test with no equivalent evidence.
+Objetivo: avaliar correção funcional e confiança em dados/integração do candidato.
 
-### 4. Security Gate
+Exigido conforme o escopo da alteração e release:
 
-Goal: prevent release with known unacceptable exploitable risk.
+- suítes de unidade, componente e integração passam;
+- suítes de API e contrato passam;
+- jornadas E2E críticas selecionadas passam quando a UI existir;
+- verificações de qualidade de dados/migração/reconciliação passam;
+- a rastreabilidade de requisitos não tem lacunas críticas sem explicação;
+- testes instáveis/em quarentena são relatados separadamente com responsável e expiração;
+- resultados de teste correspondem ao build exato e ao ambiente/perfil aprovado.
 
-Required according to exposure:
+Falhas críticas: falha de caso de teste crítico; comportamento de corrupção/atualização perdida/mensagem perdida; suíte obrigatória indisponível ou atribuída a outro build; teste crítico em quarentena sem evidência equivalente.
 
-- secret, source, dependency and artifact scans completed;
-- RBAC/object authorization and security regression tests pass;
-- threat-model changes reviewed for new boundaries or sensitive capabilities;
-- findings triaged by severity, exploitability, reachability and affected release;
-- secure upload/API/CI checks applied when relevant.
+### 4. Gate de Segurança
 
-Hard failures:
+Objetivo: impedir release com risco explorável conhecido e inaceitável.
 
-- any unresolved confirmed critical exploitable finding affecting the candidate;
-- exposed valid secret or credential;
-- demonstrated authentication/authorization bypass;
-- integrity bypass that can forge quality evidence or release decision;
-- Fault Lab reachable in production or by an unauthorized actor.
+Exigido conforme a exposição:
 
-A scanner label alone requires rapid triage; a confirmed critical issue cannot be averaged away.
+- varreduras de secrets, código-fonte, dependências e artefatos concluídas;
+- testes de RBAC/autorização de objeto e regressão de segurança passam;
+- alterações do modelo de ameaças revisadas para novos limites ou capacidades sensíveis;
+- achados triados por severidade, explorabilidade, alcance e release afetada;
+- verificações de upload/API/CI seguros aplicadas quando relevantes.
 
-### 5. Performance Gate
+Falhas críticas:
 
-Goal: ensure critical workloads meet versioned service expectations and do not regress unacceptably.
+- qualquer achado crítico explorável confirmado e não resolvido que afete o candidato;
+- secret ou credencial válida exposta;
+- bypass demonstrado de autenticação/autorização;
+- bypass de integridade que permita forjar evidência de qualidade ou decisão de release;
+- Laboratório de Falhas acessível em produção ou por ator não autorizado.
 
-Required when performance-relevant behavior changes or for release candidates:
+Um rótulo isolado do scanner exige triagem rápida; um problema crítico confirmado não pode ser diluído pela média.
 
-- workload, dataset, environment and build identity match the approved profile;
-- latency percentiles, throughput and error rate meet scenario thresholds;
-- resource saturation, queue age and recovery are reviewed;
-- regression against a valid baseline is explained.
+### 5. Gate de Performance
 
-Initial provisional API targets are p95 <= 300 ms for catalog reads and p95 <= 500 ms for writes under the agreed reference profile. These are not hard gates until a reproducible baseline defines workload and capacity.
+Objetivo: garantir que workloads críticos atendam às expectativas versionadas de serviço e não apresentem regressão inaceitável.
 
-Hard failure after calibration: performance error rate exceeds the scenario's critical threshold, a critical SLO threshold is violated, or the system fails to recover from the approved workload. Environment/load-generator invalidity yields `ERROR`, not pass.
+Exigido quando o comportamento relevante para performance mudar ou para candidatos de release:
 
-### External Exposure Gate
+- workload, dataset, ambiente e identidade do build correspondem ao perfil aprovado;
+- percentis de latência, throughput e taxa de erro atendem aos limites do cenário;
+- saturação de recursos, idade da fila e recuperação são revisadas;
+- regressão contra baseline válida é explicada.
 
-Goal: prevent a development preview from being mistaken for or deployed as a secure shared system.
+As metas provisórias iniciais da API são p95 <= 300 ms para leituras do catálogo e p95 <= 500 ms para escritas no perfil de referência acordado. Não são gates rígidos até que uma baseline reproduzível defina workload e capacidade.
 
-For v0.2 and any later build where real authentication/RBAC is incomplete, this gate permits only the documented local/isolated development profile. It **fails** any request to expose catalog mutation externally.
+Falha crítica após calibração: a taxa de erro de performance excede o limite crítico do cenário, um limite crítico de SLO é violado ou o sistema não se recupera do workload aprovado. Invalidade do ambiente/gerador de carga produz ERROR, não PASS.
 
-The gate may pass for external exposure only after Phase 03 proves:
+### Gate de Exposição Externa
 
-- real authentication/session behavior and safe administrator bootstrap;
-- server-side role, object and state authorization;
-- anonymous/denied/deactivated/session-revocation negative tests;
-- closure of every pending authorization acceptance criterion from the Catalog preview;
-- removal of development identity as a trusted security boundary;
-- reviewed environment configuration, threat model and safe secrets handling.
+Objetivo: impedir que uma prévia de desenvolvimento seja confundida com um sistema compartilhado seguro ou implantada como tal.
 
-This gate is independent of Quality Score and is a hard blocker for hosted/public exposure.
+Para v0.2 e qualquer build posterior em que autenticação/RBAC reais estejam incompletas, este gate permite somente o perfil local/isolado documentado de desenvolvimento. Ele **falha** em qualquer solicitação para expor externamente mutações do catálogo.
 
-### 6. Release Gate
+O gate pode passar para exposição externa somente depois que a Fase 03 comprovar:
 
-Goal: combine all current evidence into an explicit, auditable release decision.
+- comportamento real de autenticação/sessão e bootstrap seguro de administrador;
+- autorização no servidor por role, objeto e estado;
+- testes negativos para anônimo/negado/desativado/revogação de sessão;
+- fechamento de todos os critérios de aceite de autorização pendentes da prévia do Catálogo;
+- remoção da identidade de desenvolvimento como limite confiável de segurança;
+- configuração de ambiente, modelo de ameaças e tratamento seguro de secrets revisados.
 
-Required:
+Este gate independe da Pontuação de Qualidade e é um bloqueio crítico para exposição hospedada/pública.
 
-- exact release scope, commit/build and evidence cutoff are fixed;
-- required prior gates are `PASS` or have an authorized permissible exception;
-- hard blocking rules evaluate with current evidence;
-- Quality Score, risk classification and Engine recommendation are calculated only when their validated policy applies; otherwise each is explicitly `NOT_APPLICABLE` with the authorized policy record;
-- unresolved defects/findings and operational readiness are reviewed;
-- rollback/recovery and observability readiness exist for the implemented delivery shape;
-- final decision is recorded by an authorized human with rationale.
+### 6. Gate de Release
 
-From Quality Engine maturity onward, automation produces `APPROVE`, `REVIEW` or `BLOCK` recommendation. Before then, recommendation is `NOT_APPLICABLE`; applicable hard gates still block and an authorized human still records the final decision. Automation never deploys or records human approval by implication.
+Objetivo: combinar toda evidência atual em uma decisão explícita e auditável de release.
 
-## Change-based gate selection
+Exigido:
 
-Every PR receives baseline gates. Additional suites are selected from changed modules, contracts, data migrations, risk tags and historical defects. Examples:
+- escopo exato da release, commit/build e corte de evidência fixados;
+- gates anteriores exigidos em PASS ou com exceção permitida e autorizada;
+- regras de bloqueio crítico avaliadas com evidências atuais;
+- Pontuação de Qualidade, Classificação de Risco e recomendação do Motor calculadas somente quando sua política validada se aplicar; caso contrário, cada uma fica explicitamente NOT_APPLICABLE com o registro autorizado da política;
+- defeitos/achados não resolvidos e prontidão operacional revisados;
+- rollback/recuperação e prontidão de observabilidade existentes para o formato de entrega implementado;
+- decisão final registrada por pessoa autorizada com justificativa.
 
-| Change | Mandatory additional focus |
+A partir da maturidade do Motor de Qualidade, a automação produz recomendação APPROVE, REVIEW ou BLOCK. Antes disso, recomendação é NOT_APPLICABLE; gates críticos aplicáveis ainda bloqueiam e uma pessoa autorizada ainda registra a decisão final. A automação nunca faz deploy nem registra aprovação humana por implicação.
+
+## Seleção de gates baseada na alteração
+
+Todo PR recebe gates baseline. Suítes adicionais são selecionadas pelos módulos, contratos, migrações de dados, tags de risco e defeitos históricos afetados. Exemplos:
+
+| Alteração | Foco adicional obrigatório |
 | --- | --- |
-| Permission/authentication | security review, allow/deny matrix, session/audit tests |
-| Product money/stock/SKU | boundary/property, API, persistence/concurrency and data quality |
-| API/event schema | compatibility and consumer/provider contract checks |
-| Retry/outbox/worker | database/broker integration, idempotency, restart and resilience |
-| Upload/processing | hostile-file security, storage integration, resource/resilience checks |
-| Score/gate formula | deterministic policy, missing/stale evidence, hard-block override, audit |
-| Performance-sensitive query | execution/access-pattern review and approved performance scenario |
-| Telemetry/redaction | observability assertions and sensitive-data leak tests |
+| Permissão/autenticação | revisão de segurança, matriz de permissão/negação, testes de sessão/auditoria |
+| Dinheiro/estoque/SKU de produto | limites/propriedade, API, persistência/concorrência e qualidade de dados |
+| Schema de API/evento | compatibilidade e contrato de consumidor/provedor |
+| Retry/outbox/worker | integração com banco/broker, idempotência, reinício e resiliência |
+| Upload/processamento | segurança de arquivo hostil, integração com armazenamento, verificações de recursos/resiliência |
+| Fórmula de pontuação/gate | política determinística, evidência ausente/desatualizada, prevalência de bloqueio crítico, auditoria |
+| Consulta sensível a performance | revisão do plano/padrão de acesso e cenário de performance aprovado |
+| Telemetria/redação | asserções de observabilidade e testes de vazamento de dados sensíveis |
 
-Change-based selection cannot omit a suite required by release policy; it controls earlier feedback and targeted regression.
+A seleção baseada na alteração não pode omitir uma suíte exigida pela política de release; ela controla feedback antecipado e regressão direcionada.
 
-## Initial Quality Score concept
+## Conceito inicial da Pontuação de Qualidade
 
-### Goal and boundaries
+### Objetivo e limites
 
-The score summarizes several quality dimensions for comparison and discussion. It is not a probability of being defect-free, a performance rating for individuals or a substitute for gate details.
+A pontuação resume várias dimensões de qualidade para comparação e discussão. Não é probabilidade de ausência de defeitos, avaliação de performance de pessoas nem substituta dos detalhes dos gates.
 
-Proposed formula shape for future ADR-008 (not yet a policy version):
+Formato de fórmula proposto para o futuro ADR-008, ainda sem versão de política:
 
-```text
-Quality Score = sum(dimension score x dimension weight) - capped explicit penalties
-```
+~~~text
+Pontuação de Qualidade = soma(pontuação da dimensão x peso da dimensão) - penalidades explícitas limitadas
+~~~
 
-Each dimension is normalized to `0..100`. Initial candidate weights:
+Cada dimensão é normalizada para 0..100. Pesos candidatos iniciais:
 
-| Dimension | Weight | Candidate inputs |
+| Dimensão | Peso | Entradas candidatas |
 | --- | ---: | --- |
-| Functional confidence | 25% | risk-weighted required test outcomes, critical journey results |
-| Security confidence | 20% | triaged findings, authorization/security check outcomes |
-| Reliability and resilience | 15% | integration, retry/idempotency and approved fault experiments |
-| Performance | 15% | threshold outcomes, regression, error rate and recovery |
-| Requirement/traceability confidence | 10% | required coverage, missing links, evidence attribution/freshness |
-| Data quality | 10% | constraints, migrations, reconciliation and ingestion validity |
-| Accessibility | 5% | automated and manual critical-flow outcomes when UI exists |
+| Confiança funcional | 25% | resultados exigidos de teste ponderados por risco, resultados de jornadas críticas |
+| Confiança de segurança | 20% | achados triados, resultados de verificações de autorização/segurança |
+| Confiabilidade e resiliência | 15% | integração, retry/idempotência e experimentos de falha aprovados |
+| Performance | 15% | resultados de limites, regressão, taxa de erro e recuperação |
+| Confiança de requisitos/rastreabilidade | 10% | cobertura exigida, links ausentes, atribuição/atualização de evidências |
+| Qualidade de dados | 10% | constraints, migrações, reconciliação e validade de ingestão |
+| Acessibilidade | 5% | resultados automatizados e manuais dos fluxos críticos quando a UI existir |
 
-The formula must define:
+A fórmula deve definir:
 
-- risk weighting rather than raw pass-rate dominance;
-- treatment of `skipped`, `blocked`, `error`, retry and quarantine;
-- required versus optional/not-applicable dimensions per release maturity;
-- freshness window and missing-evidence behavior;
-- penalty caps and avoidance of double-counting the same issue;
-- precision/rounding;
-- minimum sample/profile validity for performance;
-- immutable input snapshot and formula version.
-- output bounds/clamping and the meaning/cap of any explicit penalty;
-- evidence lineage so the same result/finding is not rewarded or penalized redundantly across dimensions;
-- treatment of non-applicable dimensions without silent reweighting that inflates the result;
-- a versioned block threshold after empirical calibration, with no numeric threshold fixed by this foundation.
+- ponderação por risco em vez de domínio da taxa de aprovação bruta;
+- tratamento de skipped, blocked, error, retry e quarentena;
+- dimensões exigidas versus opcionais/não aplicáveis por maturidade da release;
+- janela de atualização e comportamento para evidência ausente;
+- limites de penalidade e prevenção de contagem duplicada do mesmo problema;
+- precisão/arredondamento;
+- validade mínima de amostra/perfil para performance;
+- snapshot imutável de entradas e versão da fórmula;
+- limites/clamping da saída e significado/limite de qualquer penalidade explícita;
+- linhagem das evidências para que o mesmo resultado/achado não seja recompensado ou penalizado em duplicidade entre dimensões;
+- tratamento de dimensões não aplicáveis sem reponderação silenciosa que infle o resultado;
+- limite de bloqueio versionado após calibração empírica, sem valor numérico fixado por esta fundação.
 
-Before v0.7, score is `NOT_APPLICABLE`; documentation examples may discuss an experimental formula, but a product UI must not present a synthetic score as release evidence. It becomes a policy input only after validation against representative scenario data and review for misleading outcomes.
+Antes da v0.7, a pontuação é NOT_APPLICABLE; exemplos documentais podem discutir fórmula experimental, mas a UI do produto não deve apresentar pontuação sintética como evidência de release. Ela só se torna entrada da política depois da validação com dados de cenários representativos e revisão de resultados enganosos.
 
-## Pass rate rules
+## Regras da taxa de aprovação
 
-Raw pass rate is shown but not used alone:
+A taxa bruta de aprovação é exibida, mas não usada isoladamente:
 
-```text
-pass rate = passed results / executed results eligible under the policy
-```
+~~~text
+taxa de aprovação = resultados aprovados / resultados executados elegíveis conforme a política
+~~~
 
-The denominator and treatment of skipped/blocked/error are disclosed. Retries retain first-attempt status; eventual pass is not silently merged into a clean pass. Risk-weighted critical failures have higher decision importance than numerous low-risk passes.
+O denominador e o tratamento de skipped/blocked/error são divulgados. Retries preservam o status da primeira tentativa; aprovação eventual não é mesclada silenciosamente como aprovação limpa. Falhas críticas ponderadas por risco têm maior importância de decisão do que muitas aprovações de baixo risco.
 
-## Risk classification
+## Classificação de Risco
 
-Risk is classified after hard gates and evidence validity are evaluated:
+O risco é classificado depois da avaliação dos gates críticos e da validade das evidências:
 
-| Level | Meaning | Typical recommendation |
+| Nível | Significado | Recomendação típica |
 | --- | --- | --- |
-| LOW | Required evidence is current, no hard blocks, score/signals are healthy and residual risks are accepted | `APPROVE` |
-| MEDIUM | No hard block, but a material non-critical regression, exception, limited gap or uncertainty needs explicit review | `REVIEW` |
-| HIGH | Significant unresolved failures/findings, broad uncertainty, weak recovery or poor score indicates likely material impact | `BLOCK` or exceptional senior review if policy permits |
-| CRITICAL | At least one non-overridable hard block or demonstrated severe integrity/security risk | `BLOCK` |
-| UNKNOWN | Required evidence is missing, stale, erroneous or not attributable | `BLOCK` until evidence policy is satisfied |
+| LOW | Evidência exigida está atual, sem bloqueios críticos, pontuação/sinais saudáveis e riscos residuais aceitos | APPROVE |
+| MEDIUM | Sem bloqueio crítico, mas uma regressão material não crítica, exceção, lacuna limitada ou incerteza exige revisão explícita | REVIEW |
+| HIGH | Falhas/achados significativos não resolvidos, incerteza ampla, recuperação fraca ou pontuação ruim indicam impacto material provável | BLOCK ou revisão sênior excepcional se a política permitir |
+| CRITICAL | Ao menos um bloqueio crítico não substituível ou risco grave demonstrado de integridade/segurança | BLOCK |
+| UNKNOWN | Evidência exigida está ausente, desatualizada, com erro ou não atribuível | BLOCK até a política de evidências ser atendida |
 
-Classification policy uses maximum-risk escalation: a strong dimension does not reduce a critical condition in another. The result includes reasons and policy version.
+A política de classificação usa elevação pelo risco máximo: uma dimensão forte não reduz condição crítica em outra. O resultado inclui motivos e versão da política.
 
-When the Quality Engine applies, its policy version may define:
+Quando o Motor de Qualidade se aplicar, sua versão de política pode definir:
 
-```text
+~~~text
 IF quality_score < versioned_block_threshold
   THEN recommendation = BLOCK
-```
+~~~
 
-No numeric threshold is accepted during foundation. It must be calibrated and versioned. Meeting or exceeding it never changes a failed hard gate.
+Nenhum limite numérico é aceito durante a fundação. Ele deve ser calibrado e versionado. Atingi-lo ou superá-lo nunca altera um gate com falha.
 
-## Hard blocking rules
+## Regras de bloqueio crítico
 
-Initial mandatory rules:
+Regras obrigatórias iniciais:
 
-```text
+~~~text
 IF confirmed_critical_security_findings > 0
   THEN BLOCK RELEASE
 
@@ -291,93 +297,93 @@ IF external_exposure_requested = true
 IF quality_engine_is_applicable = true
   AND quality_score < versioned_block_threshold
   THEN recommendation = BLOCK
-```
+~~~
 
-The low-score rule affects the versioned recommendation policy; it is not a replacement for, or exception to, any preceding hard blocking rule.
+A regra de pontuação baixa afeta a política versionada de recomendação; não substitui nem cria exceção para qualquer regra anterior de bloqueio crítico.
 
-Additional release-class-specific rules may be added through versioned policy. A rule cannot be removed merely to make the current candidate pass.
+Regras adicionais por classe de release podem ser adicionadas por política versionada. Uma regra não pode ser removida apenas para fazer o candidato atual passar.
 
-## Exceptions
+## Exceções
 
-Some non-critical gate failures may be exceptionally accepted if policy allows. An exception must include:
+Algumas falhas de gates não críticos podem ser excepcionalmente aceitas se a política permitir. Uma exceção deve incluir:
 
-- affected release, gate, requirement/component and evidence;
-- business reason and why remediation cannot precede release;
-- severity, likelihood, exposure and customer/operational impact;
-- compensating controls and monitoring;
-- accountable owner and authorized approver(s);
-- expiry/remediation target and verification plan;
-- audit record and visibility in the release summary.
+- release, gate, requisito/componente e evidência afetados;
+- motivo de negócio e por que a correção não pode preceder a release;
+- severidade, probabilidade, exposição e impacto ao cliente/operação;
+- controles compensatórios e monitoramento;
+- responsável e aprovador(es) autorizado(s);
+- expiração/meta de correção e plano de verificação;
+- registro de auditoria e visibilidade no resumo da release.
 
-Critical security/auth/integrity hard blocks are initially non-overridable. Any proposal to make a critical rule overridable requires a security/architecture ADR and explicit human approval; it cannot be done ad hoc in release data.
+Bloqueios críticos de segurança/autenticação/integridade são inicialmente não substituíveis. Qualquer proposta de torná-los substituíveis exige ADR de segurança/arquitetura e aprovação humana explícita; não pode ocorrer de modo ad hoc nos dados da release.
 
-Expired exceptions automatically become active risk and cannot approve later releases. Reusing an exception requires a new attributable decision.
+Exceções expiradas tornam-se automaticamente risco ativo e não podem aprovar releases posteriores. Reutilizar uma exceção exige nova decisão atribuível.
 
-Marking a capability or gate `NOT_APPLICABLE` follows the same minimum governance: authorized actor, explicit rationale, exact candidate/build, policy version and audit record. It cannot be used to waive a gate that the policy marks mandatory.
+Marcar capacidade ou gate como NOT_APPLICABLE segue a mesma governança mínima: ator autorizado, justificativa explícita, candidato/build exato, versão da política e registro de auditoria. Não pode ser usado para dispensar gate obrigatório na política.
 
-## Flaky and infrastructure failures
+## Falhas instáveis e de infraestrutura
 
-- A flaky test is not passed; first-attempt and retry outcomes remain visible.
-- Quarantine is tracked, owned and expires under [TEST_STRATEGY.md](TEST_STRATEGY.md#flaky-test-policy).
-- Infrastructure/tool failure produces `ERROR`; retry may establish environment validity but cannot erase evidence of instability.
-- If required evidence cannot be generated by the cutoff, the release is `UNKNOWN`/blocked rather than optimistically approved.
-- Repeated infrastructure instability is a product delivery risk and contributes to risk classification.
+- Um teste instável não está aprovado; resultados da primeira tentativa e de retry permanecem visíveis.
+- Quarentena é rastreada, tem responsável e expira conforme [TEST_STRATEGY.md](TEST_STRATEGY.md#política-de-testes-instáveis).
+- Falha de infraestrutura/ferramenta produz ERROR; retry pode estabelecer validade do ambiente, mas não apagar a evidência de instabilidade.
+- Se a evidência obrigatória não puder ser gerada até o corte, a release fica UNKNOWN/bloqueada em vez de aprovada com otimismo.
+- Instabilidade repetida de infraestrutura é risco de entrega do produto e contribui para a Classificação de Risco.
 
-## Evidence freshness and provenance
+## Atualização e proveniência das evidências
 
-Each gate input must identify:
+Toda entrada de gate deve identificar:
 
-- source and authenticated ingestion identity;
-- exact commit/build/artifact and release;
-- environment/profile and tool/schema version;
-- execution/measurement time and cutoff;
-- result/evidence checksum or immutable reference where appropriate;
-- triage state for findings;
-- freshness according to policy.
+- fonte e identidade autenticada de ingestão;
+- commit/build/artefato e release exatos;
+- ambiente/perfil e versão da ferramenta/schema;
+- momento da execução/medição e corte;
+- resultado/checksum de evidência ou referência imutável quando apropriado;
+- estado de triagem dos achados;
+- atualização conforme a política.
 
-A newer build invalidates evidence for changed scope unless the policy explicitly allows reuse and explains why. Manual evidence is attributable and expires like automated evidence.
+Um build mais novo invalida evidências do escopo alterado, salvo se a política permitir explicitamente a reutilização e explicar o motivo. Evidência manual é atribuível e expira como evidência automatizada.
 
-## Gate governance
+## Governança dos gates
 
-- Gates and formulas are configuration-as-code or equivalently version controlled when implemented.
-- Changes receive product, QA, security and engineering review proportional to impact.
-- Historical evaluations remain tied to the old version.
-- Dashboard exposes inputs, reasons, exceptions and missing data.
-- Gate changes are audited and cannot retroactively rewrite a release decision.
-- Applicability decisions and policy overrides require dedicated authorization and an immutable audit reference.
-- Metrics are periodically tested for perverse incentives and false confidence.
+- Gates e fórmulas são configuration-as-code ou equivalentemente controlados por versão quando implementados.
+- Alterações recebem revisão de produto, QA, segurança e engenharia proporcional ao impacto.
+- Avaliações históricas permanecem vinculadas à versão antiga.
+- O dashboard expõe entradas, motivos, exceções e dados ausentes.
+- Alterações de gate são auditadas e não podem reescrever retroativamente uma decisão de release.
+- Decisões de aplicabilidade e substituições de política exigem autorização dedicada e referência imutável de auditoria.
+- Métricas são testadas periodicamente contra incentivos perversos e falsa confiança.
 
-## Initial release summary example
+## Exemplo inicial de resumo de release
 
-```text
+~~~text
 Release: v1.0.0
-Candidate: rc.2
-Build: <immutable build identity>
-Evidence cutoff: <UTC timestamp>
+Candidato: rc.2
+Build: <identidade imutável do build>
+Corte de evidência: <timestamp UTC>
 
-Functional: PASS
+Funcional: PASS
 API: PASS
-Integration: PASS
+Integração: PASS
 E2E: PASS
-Security: PASS
+Segurança: PASS
 Performance: PASS
 
-Quality Score: 94/100 (formula 1.0)
-Risk: LOW (policy 1.0)
-Hard Blocks: none
-Recommendation: APPROVE
-Final Decision: APPROVED by <authorized actor> at <time>
-```
+Pontuação de Qualidade: 94/100 (fórmula 1.0)
+Risco: LOW (política 1.0)
+Bloqueios Críticos: nenhum
+Recomendação: APPROVE
+Decisão Final: APPROVED por <ator autorizado> em <momento>
+~~~
 
-The summary links to individual gates/evidence and shows staleness or exceptions. Presentation text alone is not the evidence.
+O resumo contém links para gates/evidências individuais e mostra desatualização ou exceções. Apenas o texto da apresentação não é a evidência.
 
-## Calibration and open questions
+## Calibração e questões em aberto
 
-- Reference workload/dataset/environment and critical performance error threshold.
-- Score normalization and weights validated against representative releases.
-- Which requirements and suites are critical for each release class.
-- Evidence freshness windows by source.
-- Minimum manual accessibility/exploratory evidence for UI releases.
-- Exception approver roles and whether any non-security high-risk blocks are non-overridable.
-- Definition of coverage metrics that resist superficial test/link inflation.
-- Alert/escalation path when a previously approved release later receives a critical finding.
+- Workload/dataset/ambiente de referência e limite crítico da taxa de erro de performance.
+- Normalização e pesos da pontuação validados contra releases representativas.
+- Quais requisitos e suítes são críticos para cada classe de release.
+- Janelas de atualização de evidências por fonte.
+- Evidência manual mínima de acessibilidade/exploração para releases com UI.
+- Roles aprovadoras de exceção e se algum bloqueio de alto risco não relacionado à segurança é não substituível.
+- Definição de métricas de cobertura resistentes à inflação superficial de testes/links.
+- Caminho de alerta/escalação quando uma release anteriormente aprovada receber depois um achado crítico.
