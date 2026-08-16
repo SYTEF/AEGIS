@@ -1,106 +1,106 @@
-# ADR-001 — Modular Monolith
+# ADR-001 — Monólito Modular
 
 - Status: Accepted
-- Date: 2026-08-16
-- Decision owners: NEXUS / repository owner
-- Related requirements: NFR-MAINT-001, NFR-PORT-001, NFR-TEST-001
-- Supersedes: none
-- Superseded by: none
+- Data: 2026-08-16
+- Responsáveis pela decisão: NEXUS / responsável pelo repositório
+- Requisitos relacionados: NFR-MAINT-001, NFR-PORT-001, NFR-TEST-001
+- Substitui: nenhum
+- Substituído por: nenhum
 
-## Context
+## Contexto
 
-AEGIS must demonstrate a real Commerce product and a Quality Control Center while remaining understandable, testable and reproducible on a contributor's local machine. The project does not currently have measured scale, independent teams, deployment-frequency conflicts, isolation requirements or operational constraints that justify distributed services.
+O AEGIS deve demonstrar um produto real de Commerce e um Centro de Controle de Qualidade, mantendo-se compreensível, testável e reproduzível na máquina local de um contribuidor. Atualmente, o projeto não possui escala medida, equipes independentes, conflitos de frequência de deploy, requisitos de isolamento nem restrições operacionais que justifiquem serviços distribuídos.
 
-Starting with microservices would add network failure, distributed transactions, contract/version coordination, deployment topology, security boundaries and observability costs before the product has validated those needs. Those costs would work against the project's goals of professional Quality Engineering, low cognitive load and incremental delivery.
+Começar com microservices adicionaria falhas de rede, transações distribuídas, coordenação de contratos/versões, topologia de deploy, limites de segurança e custos de observabilidade antes de o produto validar essas necessidades. Esses custos contrariariam os objetivos do projeto de Engenharia de Qualidade profissional, baixa carga cognitiva e entrega incremental.
 
-## Decision
+## Decisão
 
-AEGIS will start as a **modular monolith**.
+O AEGIS começará como um **Monólito Modular (Modular Monolith)**.
 
-- Business capabilities are organized into explicit modules with owned domain models, application APIs and persistence boundaries.
-- Cross-module calls use documented public application interfaces or published events. Direct access to another module's repository or table is prohibited.
-- Module dependencies must be acyclic and enforceable by structure and automated architecture checks when code exists.
-- Internal calls are synchronous and in-process by default.
-- Asynchronous messaging is introduced only for a concrete reliability, recovery or external-integration requirement.
-- One codebase and application artifact are preferred initially. A worker may run as a separate process profile from the same codebase when asynchronous integration requires it; this does not make it a microservice.
-- Local execution must remain possible without Kubernetes, a cloud account or a service mesh.
+- Capacidades de negócio são organizadas em módulos explícitos, com modelos de domínio, APIs de aplicação e limites de persistência sob responsabilidade definida.
+- Chamadas entre módulos usam interfaces públicas de aplicação documentadas ou eventos publicados. Acesso direto ao repositório ou tabela de outro módulo é proibido.
+- Dependências entre módulos devem ser acíclicas e aplicáveis pela estrutura e por verificações arquiteturais automatizadas quando existir código.
+- Chamadas internas são síncronas e no mesmo processo por padrão.
+- Mensageria assíncrona é introduzida apenas por um requisito concreto de confiabilidade, recuperação ou integração externa.
+- Uma base de código e um artefato de aplicação são preferidos inicialmente. Um worker pode executar como perfil de processo separado da mesma base de código quando a integração assíncrona exigir; isso não o torna um microservice.
+- A execução local deve continuar possível sem Kubernetes, conta em nuvem ou service mesh.
 
-The initial conceptual modules are `auth`, `catalog`, `media`, `integration`, `quality` and `audit`. An application/query composition boundary may combine module-owned read models for client representations without creating module-to-module cycles.
+Os módulos conceituais iniciais são auth, catalog, media, integration, quality e audit. Um limite de composição de aplicação/consulta pode combinar modelos de leitura pertencentes aos módulos para representações de clientes sem criar ciclos entre módulos.
 
-## Alternatives Considered
+## Alternativas consideradas
 
-### Microservices from the beginning
+### Microservices desde o início
 
-Rejected. No measured scaling, ownership or deployment requirement offsets the additional network, consistency, security, test and operational complexity.
+Rejeitada. Nenhum requisito medido de escala, responsabilidade ou deploy compensa a complexidade adicional de rede, consistência, segurança, testes e operação.
 
-### Unstructured monolith
+### Monólito não estruturado
 
-Rejected. A single deployable without enforced boundaries would make ownership unclear, encourage direct table coupling and make later evolution harder to test or reason about.
+Rejeitada. Um único deploy sem limites aplicáveis tornaria as responsabilidades pouco claras, incentivaria acoplamento direto por tabelas e dificultaria testar ou compreender a evolução posterior.
 
-### Serverless functions per capability
+### Funções serverless por capacidade
 
-Rejected for the initial system. It would distribute behavior and local execution without a demonstrated workload or operational benefit.
+Rejeitada para o sistema inicial. Distribuiria o comportamento e a execução local sem workload ou benefício operacional demonstrado.
 
-### Modular monolith
+### Monólito Modular
 
-Accepted. It provides explicit boundaries and realistic engineering constraints while preserving simple execution, transactions, refactoring and test feedback.
+Aceita. Oferece limites explícitos e restrições realistas de engenharia, preservando execução, transações, refatoração e feedback de testes simples.
 
-## Consequences
+## Consequências
 
-### Positive
+### Positivas
 
-- Lower cognitive and operational cost.
-- Straightforward local startup and debugging.
-- Strong transactional consistency within module-owned operations.
-- Faster unit, component and integration feedback.
-- Clear capability boundaries can be validated before any future extraction.
-- One codebase supports coherent cross-cutting security, observability and quality policies.
+- Menor custo cognitivo e operacional.
+- Inicialização local e depuração diretas.
+- Forte consistência transacional dentro de operações pertencentes a um módulo.
+- Feedback mais rápido de testes de unidade, componente e integração.
+- Limites claros de capacidades podem ser validados antes de qualquer extração futura.
+- Uma base de código sustenta políticas transversais coerentes de segurança, observabilidade e qualidade.
 
-### Negative
+### Negativas
 
-- Module boundaries require deliberate enforcement because process and database proximity make shortcuts easy.
-- A single application artifact can couple release cadence and scaling.
-- Cross-module transactions may be tempting and must remain exceptional and explicit.
-- A separately running integration worker still shares code/artifact evolution with the application.
+- Limites entre módulos exigem aplicação deliberada porque a proximidade de processo e banco facilita atalhos.
+- Um único artefato de aplicação pode acoplar cadência de release e escala.
+- Transações entre módulos podem parecer tentadoras e devem permanecer excepcionais e explícitas.
+- Um worker de integração executado separadamente ainda compartilha a evolução do código/artefato com a aplicação.
 
-### Neutral
+### Neutras
 
-- PostgreSQL may be one logical database, but modules own their tables and migrations.
-- RabbitMQ and MinIO remain external dependencies only when their approved phases introduce them.
-- Modular Monolith does not forbid future extraction; it requires evidence first.
+- PostgreSQL pode ser um único banco lógico, mas os módulos são responsáveis por suas tabelas e migrações.
+- RabbitMQ e MinIO permanecem dependências externas somente quando suas fases aprovadas os introduzirem.
+- Monólito Modular não proíbe extração futura; exige evidência primeiro.
 
-## Risks
+## Riscos
 
-- The codebase could degrade into a tightly coupled monolith if public module APIs and dependency direction are not enforced.
-- A central `quality` capability could become oversized unless internal sub-boundaries remain explicit.
-- Shared technical utilities could accumulate business rules and create hidden coupling.
-- Cross-module database foreign keys or transactions could erode lifecycle ownership.
-- Contributors could mistake separate runtime profiles for independent services.
+- A base de código pode degradar para um monólito fortemente acoplado se APIs públicas de módulos e direções de dependência não forem aplicadas.
+- Uma capacidade central quality pode crescer demais se seus sublimites internos não permanecerem explícitos.
+- Utilitários técnicos compartilhados podem acumular regras de negócio e criar acoplamento oculto.
+- Chaves estrangeiras ou transações entre módulos podem enfraquecer a responsabilidade pelo ciclo de vida.
+- Contribuidores podem confundir perfis de runtime separados com serviços independentes.
 
-Mitigations include architecture tests, module-owned migrations, small public APIs, dependency review, ADRs for cross-module persistence and regular boundary audits.
+As mitigações incluem testes de arquitetura, migrações sob responsabilidade dos módulos, APIs públicas pequenas, revisão de dependências, ADRs para persistência entre módulos e auditorias regulares dos limites.
 
-## Validation
+## Validação
 
-The decision is validated incrementally by confirming that:
+A decisão é validada incrementalmente ao confirmar que:
 
-1. Phase 01 can build, test and run one application artifact locally with a documented command path.
-2. Module dependency rules can be expressed and automatically checked without empty speculative modules.
-3. Catalog behavior can be implemented without direct access to other module repositories.
-4. Media composition and integration publication preserve acyclic ownership.
-5. Local resource usage remains practical as approved dependencies are introduced.
-6. Component/integration tests can isolate module boundaries and exercise real adapters where needed.
+1. A Fase 01 consegue construir, testar e executar localmente um artefato de aplicação com caminho de comandos documentado.
+2. Regras de dependência entre módulos podem ser expressas e verificadas automaticamente sem módulos especulativos vazios.
+3. O comportamento do Catálogo pode ser implementado sem acesso direto a repositórios de outros módulos.
+4. A composição de Mídia e a publicação da Integração preservam responsabilidade acíclica.
+5. O uso local de recursos permanece prático conforme dependências aprovadas forem introduzidas.
+6. Testes de componente/integração conseguem isolar limites de módulos e exercitar adaptadores reais quando necessário.
 
-Evidence that the modular monolith is difficult to maintain must identify the concrete boundary and measured failure; general preference for microservices is not evidence.
+Evidência de que o Monólito Modular é difícil de manter deve identificar o limite concreto e a falha mensurada; preferência geral por microservices não é evidência.
 
-## Revisit Conditions
+## Condições para revisitar
 
-Revisit this decision only when one or more measured conditions exist:
+Revisitar esta decisão somente quando uma ou mais condições mensuradas existirem:
 
-- a module requires materially different independent scaling;
-- independent teams need incompatible release cadences or ownership isolation;
-- a failure-isolation or security boundary cannot be achieved reasonably in-process;
-- deployment size/startup/resource behavior creates a demonstrated operational constraint;
-- a module has stable contracts and data ownership but the monolith prevents a required capability;
-- local and CI evidence shows that extraction benefits exceed network, consistency and operational costs.
+- um módulo exigir escala independente materialmente diferente;
+- equipes independentes precisarem de cadências de release incompatíveis ou isolamento de responsabilidade;
+- um limite de isolamento de falha ou segurança não puder ser obtido razoavelmente no mesmo processo;
+- tamanho do deploy/inicialização/comportamento de recursos criar restrição operacional demonstrada;
+- um módulo tiver contratos e responsabilidade de dados estáveis, mas o monólito impedir capacidade necessária;
+- evidências locais e de CI mostrarem que os benefícios da extração superam custos de rede, consistência e operação.
 
-Any extraction requires a superseding ADR with migration, rollback, security, test, data and observability consequences. Kubernetes, service mesh or other orchestration is a separate decision and is not implied by service extraction.
+Toda extração exige ADR substituto com consequências de migração, rollback, segurança, testes, dados e observabilidade. Kubernetes, service mesh ou outra orquestração é uma decisão separada e não é consequência implícita da extração de serviço.

@@ -1,289 +1,289 @@
-# AEGIS Observability Strategy
+# Estratégia de Observabilidade do AEGIS
 
-## Purpose
+## Finalidade
 
-Observability enables engineers to explain system behavior from emitted signals. For AEGIS, it is also a Quality Engineering capability: tests and release evidence should help an investigator cross HTTP, database, message, worker and downstream boundaries without guessing.
+Observabilidade permite que profissionais de engenharia expliquem o comportamento do sistema a partir dos sinais emitidos. Para o AEGIS, também é uma capacidade de Engenharia de Qualidade: testes e evidências de release devem ajudar uma investigação a atravessar limites de HTTP, banco de dados, mensagem, worker e downstream sem adivinhação.
 
-This document defines future instrumentation requirements. OpenTelemetry, Prometheus and Grafana are preferred but will be introduced incrementally when executable components exist. Their adoption remains subject to proportional implementation planning.
+Este documento define requisitos futuros de instrumentação. OpenTelemetry, Prometheus e Grafana são preferenciais, mas serão introduzidos incrementalmente quando existirem componentes executáveis. Sua adoção continua sujeita a planejamento proporcional de implementação.
 
-## Principles
+## Princípios
 
-- Instrument critical flows and failure boundaries during design, not after incidents.
-- Prefer structured, consistent and queryable signals over prose-heavy logs.
-- Correlate logs, metrics, traces, audit records, test evidence and releases.
-- Record outcomes and safe context, never secrets or arbitrary payloads.
-- Control cardinality, volume, retention and cost.
-- Make unknown, stale and telemetry failure explicit.
-- Alerts represent actionable user/system risk rather than every error line.
-- Telemetry validates hypotheses but is not the only source of product truth.
-- Instrumentation failures must not silently break business logic; required security audit follows its stricter policy.
+- Instrumentar fluxos críticos e limites de falha durante o design, não depois de incidentes.
+- Preferir sinais estruturados, consistentes e consultáveis a logs excessivamente narrativos.
+- Correlacionar logs, métricas, traces, registros de auditoria, evidências de teste e releases.
+- Registrar resultados e contexto seguro, nunca secrets ou payloads arbitrários.
+- Controlar cardinalidade, volume, retenção e custo.
+- Tornar estados desconhecidos, desatualizados e falhas de telemetria explícitos.
+- Alertas representam risco acionável ao usuário/sistema, não toda linha de erro.
+- Telemetria valida hipóteses, mas não é a única fonte da verdade do produto.
+- Falhas de instrumentação não devem quebrar silenciosamente a lógica de negócio; auditoria de segurança obrigatória segue sua política mais rigorosa.
 
-## Signal model
+## Modelo de sinais
 
-```mermaid
+~~~mermaid
 flowchart LR
-    Request["Request / test / event"] --> Context["Correlation and trace context"]
-    Context --> Logs["Structured logs"]
-    Context --> Metrics["Metrics"]
-    Context --> Traces["Distributed traces"]
-    Context --> Audit["Audit events"]
-    Context --> Evidence["Test/release evidence"]
-    Logs --> Investigate["Failure investigation"]
+    Request["Solicitação / teste / evento"] --> Context["Contexto de correlação e trace"]
+    Context --> Logs["Logs estruturados"]
+    Context --> Metrics["Métricas"]
+    Context --> Traces["Traces distribuídos"]
+    Context --> Audit["Eventos de auditoria"]
+    Context --> Evidence["Evidências de teste/release"]
+    Logs --> Investigate["Investigação de falha"]
     Metrics --> Investigate
     Traces --> Investigate
     Audit --> Investigate
     Evidence --> Investigate
-```
+~~~
 
-## Correlation and trace identifiers
+## Identificadores de correlação e trace
 
-### Correlation ID
+### ID de correlação
 
-A correlation ID represents a logical business/diagnostic flow and may outlive a single synchronous trace. Rules:
+Um ID de correlação representa um fluxo lógico de negócio/diagnóstico e pode sobreviver além de um único trace síncrono. Regras:
 
-- accept `X-Correlation-ID` only if it matches length/character constraints; otherwise generate a new opaque ID;
-- return the effective ID on API responses, including safe error responses;
-- propagate it through module calls, outbox events, broker messages, integration requests, audit and quality evidence;
-- preserve causation links when one event causes another;
-- do not encode user, environment or secret data into the ID;
-- log it as a structured field, not only in message text.
+- aceitar X-Correlation-ID somente se corresponder às restrições de tamanho/caracteres; caso contrário, gerar novo ID opaco;
+- retornar o ID efetivo nas respostas da API, incluindo respostas de erro seguras;
+- propagá-lo por chamadas entre módulos, eventos de outbox, mensagens do broker, solicitações de integração, auditoria e evidências de qualidade;
+- preservar vínculos de causalidade quando um evento causar outro;
+- não codificar usuário, ambiente ou secret no ID;
+- registrá-lo como campo estruturado, não apenas no texto da mensagem.
 
-### Trace and span IDs
+### IDs de trace e span
 
-OpenTelemetry trace context represents one causal execution path. Incoming trusted-compatible context may be continued after validation; otherwise new context is created. Async publish and consume use messaging span/link semantics so delays and retries are visible. Trace IDs are returned or linked in diagnostic evidence where safe.
+O contexto de trace do OpenTelemetry representa um caminho causal de execução. Contexto recebido, compatível e confiável, pode continuar após validação; caso contrário, novo contexto é criado. Publicação e consumo assíncronos usam semântica de span/link de mensageria para que atrasos e retries sejam visíveis. IDs de trace são retornados ou vinculados a evidências diagnósticas quando seguro.
 
-Correlation ID and trace ID are related but not interchangeable: retries/replays may share a business correlation while producing new traces.
+ID de correlação e ID de trace são relacionados, mas não intercambiáveis: retries/replays podem compartilhar uma correlação de negócio e produzir novos traces.
 
-### Test execution linkage protocol
+### Protocolo de vínculo da execução de teste
 
-A single test result may trigger zero, one or many HTTP/message flows. Evidence therefore stores a bounded collection of request links rather than one ambiguous identifier:
+Um único resultado de teste pode disparar zero, um ou vários fluxos HTTP/mensagens. A evidência, portanto, armazena uma coleção limitada de links de solicitações em vez de um identificador ambíguo:
 
-1. The runner identifies the exact test execution/result, release candidate and immutable build under test.
-2. For each relevant request, it may send a valid `X-Correlation-ID` or capture the server-generated value returned in the response.
-3. The runner records an ordered request link containing sequence, effective correlation ID, safe route/operation, occurred time and outcome.
-4. When trace access is authorized, the link adds the associated trace ID(s); one correlation may map to multiple traces after retry/replay.
-5. The result evidence stores the bounded link collection or an immutable artifact reference/checksum when the collection exceeds the ingestion schema limit.
-6. QCC ingestion validates the candidate/build, effective source and schema before accepting these links.
+1. O runner identifica execução/resultado exato do teste, candidato da release e build imutável sob teste.
+2. Para cada solicitação relevante, pode enviar X-Correlation-ID válido ou capturar o valor gerado pelo servidor e retornado na resposta.
+3. O runner registra um link ordenado da solicitação com sequência, ID efetivo de correlação, rota/operação segura, momento e resultado.
+4. Quando o acesso a traces é autorizado, o link acrescenta o(s) ID(s) de trace associado(s); uma correlação pode mapear vários traces após retry/replay.
+5. A evidência do resultado armazena a coleção limitada de links ou referência/checksum de artefato imutável quando a coleção exceder o limite do schema de ingestão.
+6. A ingestão no Centro de Controle de Qualidade valida candidato/build, fonte efetiva e schema antes de aceitar esses links.
 
-Correlation and trace IDs are diagnostic pointers, not proof that an assertion passed. They are never Prometheus labels. Raw URLs, headers, bodies and credentials are excluded from request links. The exact collection-size limit is set with the evidence ingestion schema before Phase 06.
+IDs de correlação e trace são ponteiros diagnósticos, não prova de que uma asserção passou. Nunca são labels do Prometheus. URLs brutas, headers, corpos e credenciais são excluídos dos links de solicitações. O limite exato da coleção será definido com o schema de ingestão de evidências antes da Fase 06.
 
-## Structured logs
+## Logs estruturados
 
-Preferred format is JSON in shared environments and human-readable structured output locally. Common fields:
+O formato preferencial é JSON em ambientes compartilhados e saída estruturada legível por humanos localmente. Campos comuns:
 
-- UTC `timestamp`, severity and stable event name/code;
-- service/process, module, environment and version/build;
-- correlation ID, trace ID and span ID;
-- request route template and HTTP method/status (not raw sensitive URL);
-- actor/service ID where policy permits, never credentials;
-- entity/event/release-candidate/test-run ID where diagnostically relevant;
-- outcome, duration and safe error classification;
-- retry attempt, dependency/operation and message schema/event ID for async work.
+- timestamp UTC, severidade e nome/código estável do evento;
+- serviço/processo, módulo, ambiente e versão/build;
+- ID de correlação, ID de trace e ID de span;
+- template de rota e método/status HTTP, não URL bruta sensível;
+- ID do ator/serviço quando a política permitir, nunca credenciais;
+- ID de entidade/evento/candidato da release/execução de teste quando relevante ao diagnóstico;
+- resultado, duração e classificação segura do erro;
+- tentativa de retry, dependência/operação e schema/ID do evento para trabalho assíncrono.
 
-Log levels:
+Níveis de log:
 
-- `DEBUG`: local/targeted diagnostic detail, disabled or sampled in normal shared operation;
-- `INFO`: lifecycle and successful material outcome, avoiding per-item noise;
-- `WARN`: recovered degradation, retry, rejected suspicious input or approaching limit;
-- `ERROR`: failed operation needing investigation or terminal processing failure.
+- DEBUG: detalhe diagnóstico local/direcionado, desabilitado ou amostrado em operação compartilhada normal;
+- INFO: ciclo de vida e resultado material bem-sucedido, evitando ruído por item;
+- WARN: degradação recuperada, retry, entrada suspeita rejeitada ou limite próximo;
+- ERROR: operação com falha que exige investigação ou falha terminal de processamento.
 
-Stable event names are preferable to parsing prose, for example `catalog.product.updated`, `integration.delivery.retry_scheduled` and `quality.gate.failed`.
+Nomes estáveis de evento são preferíveis à análise de texto, por exemplo catalog.product.updated, integration.delivery.retry_scheduled e quality.gate.failed.
 
-Never log passwords, tokens/cookies, authorization headers, signed URLs, secrets, full request/response bodies, uploaded binary content, raw SQL parameters containing data or unnecessary personal data. Redaction is allowlist-based and tested. Control characters are sanitized to prevent log injection.
+Nunca registrar senhas, tokens/cookies, headers de autorização, URLs assinadas, secrets, corpos completos de solicitação/resposta, conteúdo binário recebido, parâmetros SQL brutos com dados ou dados pessoais desnecessários. A redação é baseada em allowlist e testada. Caracteres de controle são sanitizados para impedir injeção em log.
 
-## Metrics
+## Métricas
 
-Metrics use stable, low-cardinality labels. Product, dependency and quality dimensions include:
+Métricas usam labels estáveis e de baixa cardinalidade. Dimensões de produto, dependência e qualidade incluem:
 
-### HTTP/application
+### HTTP/aplicação
 
-- request count, duration histogram and error count by route template/method/status class;
-- active requests and rejected/rate-limited requests;
-- validation, authentication and authorization denial counts (safe labels only);
-- JVM/process/runtime saturation when backend exists.
+- contagem de solicitações, histograma de duração e contagem de erros por template de rota/método/classe de status;
+- solicitações ativas e solicitações rejeitadas/limitadas;
+- contagens de negação de validação, autenticação e autorização, apenas com labels seguros;
+- saturação de JVM/processo/runtime quando o backend existir.
 
-### Catalog/data
+### Catálogo/dados
 
-- product command outcomes and concurrency conflicts;
-- database operation/transaction duration, pool utilization and timeouts;
-- history/audit append failures;
-- reconciliation discrepancies (stuck/orphan data), not raw entity IDs as labels.
+- resultados de comandos do produto e conflitos de concorrência;
+- duração de operações/transações do banco, utilização do pool e timeouts;
+- falhas de append de histórico/auditoria;
+- discrepâncias de reconciliação, como dados travados/órfãos, sem IDs brutos de entidade como labels.
 
-### Media
+### Mídia
 
-- uploads accepted/rejected by safe reason class;
-- processing duration and success/failure/retry counts;
-- pending/failed age and count;
-- object-storage dependency errors and cleanup backlog.
+- uploads aceitos/rejeitados por classe segura de motivo;
+- duração do processamento e contagens de sucesso/falha/retry;
+- idade e quantidade de itens pendentes/com falha;
+- erros de dependência do object storage e backlog de limpeza.
 
-### Messaging/integration
+### Mensageria/integração
 
-- outbox unpublished count and oldest age;
-- publish outcome/duration;
-- queue depth/consumer lag and oldest-message age where available;
-- delivery success/retry/terminal/duplicate counts;
-- downstream latency/error/timeout by operation, without full URL/customer labels;
-- retry attempts and dead-letter/recoverable failure backlog.
+- quantidade não publicada na outbox e idade do item mais antigo;
+- resultado/duração da publicação;
+- profundidade da fila/lag do consumidor e idade da mensagem mais antiga quando disponíveis;
+- contagens de sucesso/retry/falha terminal/duplicidade na entrega;
+- latência/erro/timeout downstream por operação, sem URL completa/labels de cliente;
+- tentativas de retry e backlog de dead-letter/falhas recuperáveis.
 
-### Quality Control Center
+### Centro de Controle de Qualidade
 
-- ingestion accepted/rejected/duplicate counts by approved source/type;
-- ingestion lag and evidence freshness;
-- test result counts by layer/status and first-attempt/retry distinction;
-- gate outcomes, hard-block count and evaluation errors;
-- score/risk distribution by release class/formula version (avoid release ID labels);
-- open defect/finding counts by severity and age buckets;
-- final decision/recommendation mismatch and exception age.
+- contagens de ingestão aceita/rejeitada/duplicada por fonte/tipo aprovado;
+- atraso da ingestão e atualização das evidências;
+- contagens de resultados por camada/status e distinção da primeira tentativa/retry;
+- resultados de gates, contagem de bloqueios críticos e erros de avaliação;
+- distribuição de pontuação/risco por classe de release/versão da fórmula, evitando IDs de release como labels;
+- contagem de defeitos/achados abertos por severidade e faixas de idade;
+- divergência entre decisão final/recomendação e idade da exceção.
 
-### Fault Lab
+### Laboratório de Falhas
 
-- active fault count by allowlisted scenario/environment;
-- activation/expiry/emergency-stop outcomes;
-- experiment recovery duration;
-- permanent visible banner/state when any fault is active.
+- quantidade de falhas ativas por cenário/ambiente permitido;
+- resultados de ativação/expiração/parada de emergência;
+- duração da recuperação do experimento;
+- banner/estado visível permanente enquanto qualquer falha estiver ativa.
 
-Prometheus label values must not contain SKU, product ID, user ID, correlation ID, trace ID, raw exception or release version if unbounded. Those belong in logs/traces with appropriate controls.
+Valores de labels do Prometheus não devem conter SKU, ID do produto, ID do usuário, ID de correlação, ID de trace, exceção bruta ou versão da release se não forem limitados. Esses dados pertencem a logs/traces com controles adequados.
 
 ## Traces
 
-Trace critical paths:
+Rastrear caminhos críticos:
 
-- login/session validation and authorization decision (without credentials/policy secrets);
-- catalog create/update through database commit and outbox creation;
-- outbox claim/publish, broker delivery, worker processing and downstream request;
-- media upload metadata, object interaction and processing stages;
-- quality ingestion validation/normalization/persistence;
-- gate/score/risk evaluation and release decision recording.
+- validação de login/sessão e decisão de autorização, sem credenciais/secrets da política;
+- criação/atualização no catálogo até commit do banco e criação da outbox;
+- reivindicação/publicação da outbox, entrega do broker, processamento no worker e solicitação downstream;
+- metadados de upload de mídia, interação com objeto e etapas de processamento;
+- validação/normalização/persistência da ingestão de qualidade;
+- avaliação de gate/pontuação/risco e registro da decisão de release.
 
-Spans identify module operation, outcome, duration and safe dependency attributes. Database instrumentation records operation/table or sanitized statement shape, not sensitive bound values. HTTP spans use route templates. Messaging spans carry event type/version and event ID in controlled attributes or logs without high-cardinality metric labels.
+Spans identificam operação do módulo, resultado, duração e atributos seguros de dependência. Instrumentação de banco registra operação/tabela ou formato sanitizado da instrução, não valores sensíveis vinculados. Spans HTTP usam templates de rota. Spans de mensageria carregam tipo/versão e ID do evento em atributos controlados ou logs, sem labels de métricas de alta cardinalidade.
 
-Sampling policy must preserve errors and critical release/fault experiments while controlling normal traffic volume. Head/tail sampling choice and collector availability are later operational decisions. A missing trace is not interpreted as a passed operation.
+A política de amostragem deve preservar erros e experimentos críticos de release/falha enquanto controla o volume do tráfego normal. A escolha de head/tail sampling e disponibilidade do collector são decisões operacionais posteriores. Trace ausente não é interpretado como operação aprovada.
 
 ## Health checks
 
-| Check | Meaning | Behavior |
+| Verificação | Significado | Comportamento |
 | --- | --- | --- |
-| Liveness | Process is running and not irrecoverably deadlocked | Does not fail merely because a recoverable external dependency is down |
-| Readiness | Instance can safely accept its intended work | Reflects critical dependency/migration/startup readiness; prevents premature traffic |
-| Startup | Slow initialization/migration has completed | Separates startup grace from runtime liveness when platform supports it |
-| Dependency detail | Authorized diagnostic state for DB/broker/store/downstream | Not publicly exposed with hostnames, credentials or internals |
+| Liveness | Processo está executando e não está irrecuperavelmente travado | Não falha apenas porque uma dependência externa recuperável está indisponível |
+| Readiness | Instância pode aceitar seu trabalho pretendido com segurança | Reflete prontidão de dependência crítica/migração/inicialização; impede tráfego prematuro |
+| Startup | Inicialização/migração lenta foi concluída | Separa tolerância de startup de liveness em runtime quando a plataforma oferece suporte |
+| Detalhe de dependência | Estado diagnóstico autorizado de banco/broker/storage/downstream | Não é exposto publicamente com hostnames, credenciais ou detalhes internos |
 
-The public health response is minimal. Catalog API readiness policy must distinguish core database necessity from asynchronous broker/downstream degradation: downstream failure should not unnecessarily disable catalog reads/writes when the outbox can safely accumulate. Worker readiness depends on the broker/database boundary it needs.
+A resposta pública de health é mínima. A política de readiness da API de Catálogo deve distinguir a necessidade essencial do banco da degradação assíncrona de broker/downstream: falha downstream não deve desabilitar desnecessariamente leituras/escritas do catálogo quando a outbox puder acumular com segurança. A readiness do worker depende dos limites de broker/banco necessários.
 
-Quality evidence source freshness is a quality status, not process liveness.
+Atualização da fonte de evidência de qualidade é status de qualidade, não liveness do processo.
 
 ## Dashboards
 
-Dashboards are views over version-controlled/owned signals, not the only place definitions live.
+Dashboards são visões de sinais versionados/sob responsabilidade definida, não o único lugar em que as definições existem.
 
-### System overview
+### Visão geral do sistema
 
-- request rate, errors and latency by module;
-- runtime/database saturation;
-- dependency health;
-- current deployment/build and active Fault Lab state.
+- taxa de solicitações, erros e latência por módulo;
+- saturação de runtime/banco;
+- health das dependências;
+- deploy/build atual e estado ativo do Laboratório de Falhas.
 
-### Catalog and media
+### Catálogo e mídia
 
-- catalog command/read outcomes and concurrency conflicts;
-- database latency/timeouts;
-- media pending/failure age, processing duration and object-store health.
+- resultados de comandos/leituras do catálogo e conflitos de concorrência;
+- latência/timeouts do banco;
+- idade de itens pendentes/com falha de mídia, duração do processamento e health do object storage.
 
-### Integration reliability
+### Confiabilidade da integração
 
-- outbox backlog and oldest age;
-- publish/consume/delivery rate;
-- retries, duplicate outcomes, terminal failures and replay activity;
-- downstream latency/error rate and recovery.
+- backlog da outbox e idade do item mais antigo;
+- taxa de publicação/consumo/entrega;
+- retries, resultados duplicados, falhas terminais e atividade de replay;
+- latência/taxa de erro downstream e recuperação.
 
-### Release quality
+### Qualidade da release
 
-- evidence freshness/coverage by release;
-- suites/results and first-attempt stability;
-- defects/findings, performance thresholds and gate outcomes;
-- score/risk/recommendation with formula/policy version;
-- hard blockers, exceptions and final human decision.
+- atualização/cobertura das evidências por release;
+- suítes/resultados e estabilidade na primeira tentativa;
+- defeitos/achados, limites de performance e resultados dos gates;
+- pontuação/risco/recomendação com versão da fórmula/política;
+- bloqueios críticos, exceções e decisão humana final.
 
-### Fault experiment
+### Experimento de falha
 
-- experiment hypothesis/time window and active injected fault;
-- steady-state indicator, affected flow and dependency signal;
-- trace exemplars, recovery time and abort condition;
-- linked test run/evidence/conclusion.
+- hipótese/janela do experimento e falha injetada ativa;
+- indicador de estado estável, fluxo afetado e sinal da dependência;
+- traces exemplares, tempo de recuperação e condição de aborto;
+- execução/evidência/conclusão do teste vinculado.
 
-## Alerts
+## Alertas
 
-Alerts require an owner, severity, actionable description, investigation link and tested runbook. Initial candidates, after baselining:
+Alertas exigem responsável, severidade, descrição acionável, link de investigação e runbook testado. Candidatos iniciais, após definição de baseline:
 
-| Condition | Rationale | Initial response |
+| Condição | Justificativa | Resposta inicial |
 | --- | --- | --- |
-| API error rate/latency exceeds sustained threshold | user-visible degradation | inspect deployment, route and dependency traces |
-| Database pool saturation/timeouts | cascading availability risk | inspect slow operations, connection usage and recent changes |
-| Outbox oldest age/backlog grows | committed changes not reaching broker | inspect publisher/broker and stuck claims |
-| Integration terminal failures or retry surge | downstream divergence/retry storm | classify downstream response, pause/replay safely |
-| Media failure/backlog age grows | product media unavailable/stuck | inspect processor/storage and resource limits |
-| Required audit append fails | accountability/security risk | invoke fail-closed policy and investigate storage/path |
-| Evidence source stale or ingestion rejection spikes | release decision may be invalid | block/mark unknown and inspect source/schema/auth |
-| Quality gate evaluation error | no reliable recommendation | mark evaluation unavailable and investigate formula/input |
-| Critical security finding ingested | immediate release risk | validate, notify owner and hard-block affected release |
-| Fault remains near TTL or stop fails | containment risk | emergency stop and environment owner escalation |
+| Taxa de erro/latência da API excede limite sustentado | degradação visível ao usuário | inspecionar deploy, rota e traces de dependência |
+| Saturação/timeouts do pool do banco | risco de disponibilidade em cascata | inspecionar operações lentas, uso de conexões e alterações recentes |
+| Idade/backlog da outbox cresce | alterações confirmadas não chegam ao broker | inspecionar publicador/broker e claims travados |
+| Falhas terminais da integração ou pico de retry | divergência downstream/tempestade de retry | classificar resposta downstream, pausar/repetir com segurança |
+| Idade de falha/backlog de mídia cresce | mídia do produto indisponível/travada | inspecionar processador/armazenamento e limites de recursos |
+| Falha em append de auditoria exigida | risco de responsabilização/segurança | invocar política fail-closed e investigar armazenamento/caminho |
+| Fonte de evidência desatualizada ou pico de rejeição de ingestão | decisão de release pode ser inválida | bloquear/marcar desconhecido e inspecionar fonte/schema/autenticação |
+| Erro de avaliação de Gate de Qualidade | recomendação não confiável | marcar avaliação indisponível e investigar fórmula/entrada |
+| Achado crítico de segurança ingerido | risco imediato de release | validar, notificar responsável e bloquear criticamente a release afetada |
+| Falha próxima do TTL ou parada falha | risco de contenção | parada de emergência e escalação ao responsável pelo ambiente |
 
-Avoid alerting on every individual 4xx, retry or failed test. Aggregate and route according to impact. Thresholds start as dashboard observations, become alerts after baseline, and become hard gates only under versioned quality policy.
+Evitar alertar a cada 4xx, retry ou teste com falha. Agregar e direcionar conforme o impacto. Limites começam como observações em dashboard, tornam-se alertas após baseline e tornam-se gates críticos somente sob política de qualidade versionada.
 
-## QA-assisted failure investigation
+## Investigação de falhas assistida por QA
 
-For an automated or exploratory failure, QA should be able to:
+Para uma falha automatizada ou exploratória, a equipe de QA deve conseguir:
 
-1. Identify exact requirement/test case, release candidate/build, environment, data identity and attempt.
-2. Copy the response correlation ID or evidence trace ID.
-3. Locate the request span and determine whether failure occurred in UI, API/module, database, broker, worker, storage or downstream.
-4. Compare metrics around the execution window for latency, saturation, queue/backlog and fault activation.
-5. Query structured logs by correlation/event/run ID for safe classified outcomes.
-6. Distinguish product assertion failure from infrastructure, test data, stale evidence or tool failure.
-7. Preserve minimum useful evidence and link it to a defect/release without copying secrets.
-8. Reproduce with controlled data/fault if safe, then verify recovery and telemetry.
+1. Identificar requisito/caso de teste exato, candidato/build da release, ambiente, identidade dos dados e tentativa.
+2. Copiar o ID de correlação da resposta ou ID de trace da evidência.
+3. Localizar o span da solicitação e determinar se a falha ocorreu em UI, API/módulo, banco, broker, worker, storage ou downstream.
+4. Comparar métricas na janela da execução para latência, saturação, fila/backlog e ativação de falhas.
+5. Consultar logs estruturados por ID de correlação/evento/execução para resultados classificados e seguros.
+6. Distinguir falha de asserção do produto de falha de infraestrutura, dados de teste, evidência desatualizada ou ferramenta.
+7. Preservar a evidência mínima útil e vinculá-la a um defeito/release sem copiar secrets.
+8. Reproduzir com dados/falha controlados quando seguro e então verificar recuperação e telemetria.
 
-Example:
+Exemplo:
 
-```text
-TC-INT-CAT-004 failed on build abc...
-  -> correlationId links catalog commit and outbox event
-  -> eventId links publish, consumer and delivery attempts
-  -> trace shows downstream timeout at 2 s
-  -> metric shows bounded retries and outbox remains healthy
-  -> integration status becomes recoverably failed
-  -> no duplicate downstream effect after replay
-```
+~~~text
+TC-INT-CAT-004 falhou no build abc...
+  -> correlationId vincula commit do catálogo e evento de outbox
+  -> eventId vincula publicação, consumidor e tentativas de entrega
+  -> trace mostra timeout downstream em 2 s
+  -> métrica mostra retries limitados e outbox saudável
+  -> status da integração torna-se falha recuperável
+  -> nenhum efeito downstream duplicado após replay
+~~~
 
-QA does not assert private log wording as the only correctness oracle. Stable state/API contracts prove behavior; telemetry explains behavior and recovery.
+A equipe de QA não usa o texto privado de logs como único oráculo de correção. Contratos estáveis de estado/API comprovam comportamento; telemetria explica comportamento e recuperação.
 
-## Release and deployment correlation
+## Correlação entre release e deploy
 
-Every runtime and telemetry resource identifies application version, immutable commit/build and environment as resource attributes. Deployment/change markers allow dashboards to compare before/after behavior. Quality evidence must target the exact candidate and same build identity used by runtime/deployment; release display version alone is insufficient.
+Todo runtime e recurso de telemetria identifica versão da aplicação, commit/build imutável e ambiente como atributos do recurso. Marcadores de deploy/alteração permitem comparar o comportamento antes/depois nos dashboards. Evidências de qualidade devem apontar ao candidato exato e à mesma identidade de build usada pelo runtime/deploy; a versão de exibição da release é insuficiente.
 
-## Observability testing
+## Testes de observabilidade
 
-- Component/integration tests assert required structured events/attributes for critical outcomes without overspecifying prose.
-- Redaction tests inject canary-like fake secrets/personal values and verify they are absent from logs/traces/errors.
-- Trace propagation tests cross HTTP, outbox/message and downstream mock.
-- Metric tests check bounded label sets and correct outcome classification.
-- Health checks are tested under dependency failure and recovery.
-- Alert rules/runbooks are exercised with safe synthetic/fault scenarios.
-- Fault Lab experiments require expected telemetry and recovery evidence.
+- Testes de componente/integração verificam eventos/atributos estruturados exigidos para resultados críticos sem especificar demais o texto.
+- Testes de redação injetam valores sintéticos semelhantes a secrets/dados pessoais e verificam sua ausência em logs/traces/erros.
+- Testes de propagação de trace atravessam HTTP, outbox/mensagem e mock downstream.
+- Testes de métricas verificam conjuntos limitados de labels e classificação correta do resultado.
+- Health checks são testados sob falha e recuperação de dependências.
+- Regras de alerta/runbooks são exercitados com cenários sintéticos/de falha seguros.
+- Experimentos do Laboratório de Falhas exigem telemetria esperada e evidência de recuperação.
 
-## Retention, access and reliability
+## Retenção, acesso e confiabilidade
 
-Retention varies by signal/classification and must be defined before hosted production. Access follows least privilege: broad dashboard access does not imply raw security/audit/evidence access. Telemetry systems must have quotas, backpressure and disk/collector failure behavior; application threads must not block indefinitely on export.
+A retenção varia por sinal/classificação e deve ser definida antes de produção hospedada. O acesso segue privilégio mínimo: acesso amplo a dashboards não implica acesso a dados brutos de segurança/auditoria/evidência. Sistemas de telemetria devem ter quotas, backpressure e comportamento para falha de disco/collector; threads da aplicação não devem bloquear indefinidamente na exportação.
 
-Audit is not equivalent to application logging and may require stronger integrity/retention. Quality evidence references may outlive high-volume traces, so necessary diagnostic excerpts or immutable links follow an explicit evidence policy.
+Auditoria não equivale a logging da aplicação e pode exigir maior integridade/retenção. Referências de evidência de qualidade podem sobreviver a traces de alto volume, portanto trechos diagnósticos necessários ou links imutáveis seguem política explícita de evidências.
 
-## Open decisions and risks
+## Decisões e riscos em aberto
 
-- Collector/topology and local Docker Compose profile.
-- Log/trace backend; Prometheus/Grafana alone do not provide long-term log/trace storage.
-- Sampling, retention, data residency and cost constraints.
-- Concrete service-level objectives and alert thresholds after baseline.
-- Whether evidence snapshots retain selected trace/log excerpts when telemetry expires.
-- Safe correlation visibility in client UI and access-controlled support workflows.
-- Audit storage/tamper-evidence design distinct from normal logs.
-- Operational ownership/on-call expectations for a portfolio project.
+- Topologia/collector e perfil local de Docker Compose.
+- Backend de logs/traces; Prometheus/Grafana isoladamente não armazenam logs/traces a longo prazo.
+- Amostragem, retenção, residência de dados e restrições de custo.
+- Objetivos concretos de nível de serviço e limites de alerta após baseline.
+- Se snapshots de evidência retêm trechos selecionados de trace/log quando a telemetria expirar.
+- Visibilidade segura de correlação na UI do cliente e fluxos de suporte com controle de acesso.
+- Design de armazenamento/evidência de adulteração da auditoria, distinto de logs normais.
+- Responsabilidade operacional/expectativas de plantão para um projeto de portfólio.

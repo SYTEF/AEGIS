@@ -1,115 +1,115 @@
-# Architecture Decision Records
+# Registros de Decisão Arquitetural
 
-## Purpose
+## Finalidade
 
-An Architecture Decision Record (ADR) captures an important decision, its context, alternatives and consequences. ADRs preserve why AEGIS chose an approach so future contributors can evaluate it without reconstructing lost discussion.
+Um Registro de Decisão Arquitetural (Architecture Decision Record — ADR) registra uma decisão importante, seu contexto, alternativas e consequências. ADRs preservam por que o AEGIS escolheu uma abordagem para que futuros contribuidores possam avaliá-la sem reconstruir uma discussão perdida.
 
-ADRs are appropriate when a decision is difficult to reverse, affects multiple modules or quality attributes, introduces operational cost, defines a durable contract, or rejects a plausible alternative for a non-obvious reason. Routine local implementation details do not need an ADR.
+ADRs são apropriados quando uma decisão é difícil de reverter, afeta vários módulos ou atributos de qualidade, introduz custo operacional, define contrato durável ou rejeita uma alternativa plausível por um motivo não óbvio. Detalhes locais e rotineiros de implementação não precisam de ADR.
 
-## Decision process
+## Processo de decisão
 
-1. Identify the concrete problem, constraints, requirements and affected quality attributes.
-2. Describe viable options, including “do nothing/use the current design.”
-3. Compare benefits, costs, risks, testability, security, observability, operations and migration/rollback.
-4. Propose one decision with measurable consequences.
-5. Obtain the required human/technical review before implementation.
-6. Mark status and link the ADR from affected documentation/plan.
-7. If the decision changes, create a superseding ADR; do not rewrite accepted history beyond minor corrections.
+1. Identificar o problema concreto, restrições, requisitos e atributos de qualidade afetados.
+2. Descrever opções viáveis, incluindo “não fazer nada/usar o design atual”.
+3. Comparar benefícios, custos, riscos, testabilidade, segurança, observabilidade, operações e migração/rollback.
+4. Propor uma decisão com consequências mensuráveis.
+5. Obter a revisão humana/técnica exigida antes da implementação.
+6. Marcar o status e vincular o ADR à documentação/plano afetado.
+7. Se a decisão mudar, criar um ADR substituto; não reescrever o histórico aceito, exceto por pequenas correções.
 
-## Naming and status
+## Nomenclatura e status
 
-Files use `ADR-NNN-short-kebab-title.md`, for example `ADR-001-modular-monolith.md`.
+Arquivos usam ADR-NNN-short-kebab-title.md, por exemplo ADR-001-modular-monolith.md.
 
-Allowed statuses:
+Status permitidos:
 
-- `Proposed`: under review; not authorization to implement;
-- `Accepted`: approved and expected to guide implementation;
-- `Rejected`: considered but not selected, with rationale;
-- `Deprecated`: no longer recommended but may still exist;
-- `Superseded by ADR-NNN`: replaced by a later decision.
+- Proposed: em revisão; não autoriza implementação;
+- Accepted: aprovado e esperado como orientação para a implementação;
+- Rejected: considerado, mas não selecionado, com justificativa;
+- Deprecated: deixou de ser recomendado, mas ainda pode existir;
+- Superseded by ADR-NNN: substituído por decisão posterior.
 
-Numbers are never reused. The index below is updated whenever an ADR is added or changes status.
+Números nunca são reutilizados. O índice abaixo é atualizado sempre que um ADR é adicionado ou muda de status.
 
-## ADR template
+## Template de ADR
 
-```markdown
-# ADR-NNN — Decision title
+~~~markdown
+# ADR-NNN — Título da decisão
 
 - Status: Proposed
-- Date: YYYY-MM-DD
-- Owners: <roles/names>
-- Related requirements: REQ-...
-- Supersedes: none
-- Superseded by: none
+- Data: YYYY-MM-DD
+- Responsáveis: <roles/nomes>
+- Requisitos relacionados: REQ-...
+- Substitui: nenhum
+- Substituído por: nenhum
 
-## Context
+## Contexto
 
-What concrete problem are we solving? What constraints and evidence exist?
+Qual problema concreto estamos resolvendo? Quais restrições e evidências existem?
 
-## Decision drivers
+## Direcionadores da decisão
 
-- Product need
-- Simplicity and maintainability
-- Security, testability and observability
-- Reliability/performance
-- Local operation and cost
+- Necessidade do produto
+- Simplicidade e manutenibilidade
+- Segurança, testabilidade e observabilidade
+- Confiabilidade/performance
+- Operação local e custo
 
-## Considered options
+## Opções consideradas
 
-### Option A
+### Opção A
 
-Benefits, costs and risks.
+Benefícios, custos e riscos.
 
-### Option B
+### Opção B
 
-Benefits, costs and risks.
+Benefícios, custos e riscos.
 
-## Decision
+## Decisão
 
-The selected option and precise scope.
+A opção selecionada e seu escopo exato.
 
-## Consequences
+## Consequências
 
-Positive, negative and neutral consequences, including migration/rollback.
+Consequências positivas, negativas e neutras, incluindo migração/rollback.
 
-## Validation
+## Validação
 
-How the decision will be tested or measured and when it should be revisited.
-```
+Como a decisão será testada ou medida e quando deverá ser revisitada.
+~~~
 
-## Proposed future ADRs
+## ADRs futuros propostos
 
-The following titles are candidates, not accepted decisions:
+Os títulos a seguir são candidatos, não decisões aceitas:
 
-| Candidate | Problem to decide | Expected timing |
+| Candidato | Problema a decidir | Momento esperado |
 | --- | --- | --- |
-| ADR-002 PostgreSQL | Persistence fit, schema/migration strategy and local version | Before first durable catalog slice |
-| ADR-003 RabbitMQ | Why async messaging is needed, topology, retry/DLQ and alternatives | Before integration phase |
-| ADR-004 MinIO | Object storage need, lifecycle, local setup and alternatives | Before media phase |
-| ADR-005 Playwright | Browser test role, project structure, browser matrix and alternatives | Before first frontend E2E suite |
-| ADR-006 Authentication | Cookie/token/provider model, session lifecycle and security consequences | Before authentication phase |
-| ADR-007 Optimistic concurrency | ETag versus explicit version contract | Before mutable catalog endpoint |
-| ADR-008 Quality formula and policy versioning | Score dimensions, missing evidence, gates and governance | Before Quality Engine implementation |
-| ADR-009 Observability telemetry backends | Collection/storage, local profile, retention and cost | Before full observability phase |
+| ADR-002 PostgreSQL | Adequação da persistência, estratégia de schema/migração e versão local | Antes da primeira fatia durável do catálogo |
+| ADR-003 RabbitMQ | Por que mensageria assíncrona é necessária, topologia, retry/DLQ e alternativas | Antes da fase de integração |
+| ADR-004 MinIO | Necessidade de object storage, ciclo de vida, configuração local e alternativas | Antes da fase de mídia |
+| ADR-005 Playwright | Papel dos testes no navegador, estrutura do projeto, matriz de navegadores e alternativas | Antes da primeira suíte E2E do frontend |
+| ADR-006 Autenticação | Modelo de cookie/token/provedor, ciclo de sessão e consequências de segurança | Antes da fase de autenticação |
+| ADR-007 Concorrência otimista | ETag versus contrato com versão explícita | Antes do endpoint mutável do catálogo |
+| ADR-008 Fórmula de qualidade e versionamento de política | Dimensões da pontuação, evidência ausente, gates e governança | Antes da implementação do Motor de Qualidade |
+| ADR-009 Backends de telemetria de observabilidade | Coleta/armazenamento, perfil local, retenção e custo | Antes da fase completa de observabilidade |
 
-Candidate numbering may change until a file is created. Do not create every ADR in advance; create one when the decision is ready and needed.
+A numeração dos candidatos pode mudar até que um arquivo seja criado. Não crie todos os ADRs antecipadamente; crie um quando a decisão estiver pronta e for necessária.
 
-## Technology bar
+## Critério mínimo para tecnologias
 
-An ADR proposing Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch or microservices must answer:
+Um ADR que proponha Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch ou microservices deve responder:
 
-1. What measured, concrete problem exists?
-2. Why can the modular monolith/current stack not solve it more simply?
-3. What new failure modes, security surface and operating cost result?
-4. How will local reproducibility, tests and observability remain credible?
-5. What is the migration and rollback path?
+1. Qual problema concreto e mensurado existe?
+2. Por que o Monólito Modular/stack atual não consegue resolvê-lo de forma mais simples?
+3. Quais novos modos de falha, superfície de segurança e custo operacional surgem?
+4. Como reprodutibilidade local, testes e observabilidade permanecerão confiáveis?
+5. Qual é o caminho de migração e rollback?
 
-Without a convincing answer and explicit approval, the decision is **Rejected**.
+Sem resposta convincente e aprovação explícita, a decisão é **Rejected**.
 
-## ADR index
+## Índice de ADRs
 
-| ADR | Status | Decision |
+| ADR | Status | Decisão |
 | --- | --- | --- |
-| [ADR-001 Modular Monolith](ADR-001-modular-monolith.md) | Accepted | Start with explicit in-process modules and require measured evidence before distribution |
+| [ADR-001 — Monólito Modular](ADR-001-modular-monolith.md) | Accepted | Começar com módulos explícitos no mesmo processo e exigir evidência mensurada antes da distribuição |
 
-Future ADRs remain candidates until their decision is needed and reviewed.
+ADRs futuros permanecem candidatos até que sua decisão seja necessária e revisada.

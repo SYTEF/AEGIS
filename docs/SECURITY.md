@@ -1,309 +1,309 @@
-# AEGIS Security Strategy
+# Estratégia de Segurança do AEGIS
 
-## Purpose and current status
+## Finalidade e estado atual
 
-Security is a design constraint across AEGIS Commerce, the Quality Control Center and Fault Lab. This document defines the initial policy and threat model; it does not claim security controls have been implemented or that the future system is production-certified.
+Segurança é uma restrição de design no AEGIS Commerce, no Centro de Controle de Qualidade e no Laboratório de Falhas. Este documento define a política inicial e o modelo de ameaças; não afirma que controles de segurança foram implementados nem que o futuro sistema tem certificação para produção.
 
-Security findings are evidence for release decisions. Automated scanning supports but does not replace threat modeling, code review, abuse-case testing or human triage.
+Achados de segurança são evidências para decisões de release. Varredura automatizada apoia, mas não substitui, modelagem de ameaças, revisão de código, testes de casos de abuso ou triagem humana.
 
-## Security principles
+## Princípios de segurança
 
-- Deny by default and grant the minimum capability required.
-- Authenticate identities and authorize every protected action server-side.
-- Treat browsers, uploads, messages, CI sources and external services as untrusted.
-- Validate at every trust boundary and encode/parameterize for the target context.
-- Minimize sensitive data, exposure, privileges, retention and blast radius.
-- Keep secrets out of code, logs, traces, errors and evidence.
-- Use secure defaults; dangerous capabilities such as Fault Lab default off.
-- Record attributable security-relevant actions in integrity-protected audit history.
-- Fail closed where continuing would bypass authentication, authorization, critical audit or integrity controls.
-- Make security control failures observable without leaking attack details.
-- Patch and reassess continuously; a one-time scan is not assurance.
+- Negar por padrão e conceder a capacidade mínima necessária.
+- Autenticar identidades e autorizar toda ação protegida no servidor.
+- Tratar navegadores, uploads, mensagens, fontes de CI e serviços externos como não confiáveis.
+- Validar em todo limite de confiança e codificar/parametrizar para o contexto de destino.
+- Minimizar dados sensíveis, exposição, privilégios, retenção e blast radius.
+- Manter secrets fora do código, logs, traces, erros e evidências.
+- Usar padrões seguros; capacidades perigosas como o Laboratório de Falhas ficam desligadas por padrão.
+- Registrar ações atribuíveis e relevantes para segurança em histórico de auditoria protegido contra alteração.
+- Operar em fail-closed quando continuar contornaria autenticação, autorização, auditoria crítica ou controles de integridade.
+- Tornar falhas de controle de segurança observáveis sem vazar detalhes do ataque.
+- Corrigir e reavaliar continuamente; uma varredura isolada não é garantia.
 
-## Assets and security objectives
+## Ativos e objetivos de segurança
 
-| Asset | Primary objectives | Examples of harm |
+| Ativo | Objetivos principais | Exemplos de dano |
 | --- | --- | --- |
-| Credentials and sessions | confidentiality, integrity, revocability | account takeover, impersonation |
-| Roles and permissions | integrity, auditability | privilege escalation, unauthorized release decision |
-| Catalog/product data | integrity, availability | wrong price/stock, hidden or malicious content |
-| Product images | integrity, safe processing, access control | malware/polyglot, stored XSS, resource exhaustion |
-| Audit/history | integrity, retention, restricted access | repudiation, evidence tampering, privacy leak |
-| Messages/outbox | authenticity, integrity, replay safety | duplicate/lost downstream changes |
-| Test and quality evidence | provenance, integrity, confidentiality | forged pass, wrong build attribution, secret leakage |
-| Quality policy/score/gates | integrity, explainability | critical risk averaged away or policy tampering |
-| Release decisions | authorization, non-repudiation | unauthorized approval, hidden exception |
-| Fault Lab controls | strict authorization, containment, availability | persistent outage or production activation |
-| Secrets and supply chain | confidentiality, integrity | dependency compromise, infrastructure access |
+| Credenciais e sessões | confidencialidade, integridade, capacidade de revogação | tomada de conta, personificação |
+| Roles e permissões | integridade, auditabilidade | elevação de privilégio, decisão de release não autorizada |
+| Dados de catálogo/produto | integridade, disponibilidade | preço/estoque incorreto, conteúdo oculto ou malicioso |
+| Imagens de produtos | integridade, processamento seguro, controle de acesso | malware/polyglot, XSS armazenado, exaustão de recursos |
+| Auditoria/histórico | integridade, retenção, acesso restrito | repúdio, adulteração de evidência, vazamento de privacidade |
+| Mensagens/outbox | autenticidade, integridade, proteção contra replay | alterações downstream duplicadas/perdidas |
+| Evidências de teste e qualidade | proveniência, integridade, confidencialidade | aprovação forjada, atribuição ao build errado, vazamento de secret |
+| Política/pontuação/gates de qualidade | integridade, explicabilidade | risco crítico diluído ou política adulterada |
+| Decisões de release | autorização, não repúdio | aprovação não autorizada, exceção ocultada |
+| Controles do Laboratório de Falhas | autorização rigorosa, contenção, disponibilidade | interrupção persistente ou ativação em produção |
+| Secrets e cadeia de suprimentos | confidencialidade, integridade | comprometimento de dependência, acesso à infraestrutura |
 
-## Trust boundaries
+## Limites de confiança
 
-```mermaid
+~~~mermaid
 flowchart LR
-    Browser["Untrusted browser/client"] -->|"HTTPS + auth"| API["AEGIS API trust boundary"]
-    CI["CI and test sources"] -->|"scoped identity + schema"| API
-    API -->|"least-privilege account"| DB[("PostgreSQL")]
-    API -->|"private objects"| Store[("MinIO")]
-    API -->|"versioned messages"| Broker[("RabbitMQ")]
-    Broker --> Worker["Integration worker"]
-    Worker -->|"timeout + idempotency"| External["Untrusted Sales Center Mock"]
-    API -."sanitized telemetry".-> Telemetry["Observability systems"]
-```
+    Browser["Navegador/cliente não confiável"] -->|"HTTPS + autenticação"| API["Limite de confiança da API AEGIS"]
+    CI["CI e fontes de teste"] -->|"identidade com escopo + schema"| API
+    API -->|"conta com privilégio mínimo"| DB[("PostgreSQL")]
+    API -->|"objetos privados"| Store[("MinIO")]
+    API -->|"mensagens versionadas"| Broker[("RabbitMQ")]
+    Broker --> Worker["Worker de integração"]
+    Worker -->|"timeout + idempotência"| External["Mock não confiável do Centro de Vendas"]
+    API -."telemetria sanitizada".-> Telemetry["Sistemas de observabilidade"]
+~~~
 
-Crossing a boundary requires explicit authentication where applicable, authorization, validation, timeout/resource limits and safe telemetry. Being on an internal network is not an identity control.
+Cruzar um limite exige autenticação explícita quando aplicável, autorização, validação, timeout/limites de recursos e telemetria segura. Estar em uma rede interna não é controle de identidade.
 
-## Authentication
+## Autenticação
 
-The exact browser authentication/session mechanism requires an ADR. Any accepted design must:
+O mecanismo exato de autenticação/sessão no navegador exige um ADR. Todo design aceito deve:
 
-- use a mature framework/provider instead of custom cryptography;
-- store passwords only as an adaptive salted password hash if passwords are managed locally;
-- enforce TLS outside local-only development;
-- use time-limited credentials/sessions with rotation and revocation appropriate to the threat model;
-- prevent session fixation and token reuse after logout/revocation where promised;
-- protect tokens in transport/storage and never place bearer tokens in URLs;
-- rate-limit and monitor authentication attempts without exposing account existence;
-- return generic authentication failure messages;
-- define recovery/bootstrap administration securely before production use;
-- consider MFA for release approvers/administrators before real deployment.
+- usar framework/provedor maduro em vez de criptografia customizada;
+- armazenar senhas somente como hash adaptativo com salt se as senhas forem gerenciadas localmente;
+- aplicar TLS fora do desenvolvimento exclusivamente local;
+- usar credenciais/sessões com prazo, rotação e revogação adequadas ao modelo de ameaças;
+- impedir session fixation e reutilização de token após logout/revogação quando prometido;
+- proteger tokens no transporte/armazenamento e nunca colocar bearer tokens em URLs;
+- limitar taxa e monitorar tentativas de autenticação sem expor existência da conta;
+- retornar mensagens genéricas de falha de autenticação;
+- definir recuperação/bootstrap administrativo com segurança antes do uso em produção;
+- considerar MFA para aprovadores de release/administradores antes de um deploy real.
 
-If browser cookies are selected, they must be `HttpOnly`, `Secure` outside local HTTP, appropriately `SameSite`, narrowly scoped and paired with CSRF protection for state changes. If bearer tokens are selected, browser storage and XSS consequences require explicit review; long-lived tokens in `localStorage` are not an unexamined default.
+Se cookies do navegador forem selecionados, devem ser HttpOnly, Secure fora de HTTP local, ter SameSite e escopo adequados e ser combinados com proteção CSRF para alterações de estado. Se bearer tokens forem selecionados, armazenamento no navegador e consequências de XSS exigem revisão explícita; tokens de longa duração em localStorage não são padrão sem análise.
 
-Service-to-service/CI ingestion identities are distinct from human sessions, narrowly scoped, rotatable and attributable.
+Identidades de ingestão serviço-a-serviço/CI são distintas de sessões humanas, estritamente delimitadas, rotacionáveis e atribuíveis.
 
-## Authorization and RBAC
+## Autorização e RBAC
 
-- Permissions represent capabilities such as `catalog:write` and `release:decide`; roles group capabilities.
-- Endpoint, object and state-transition authorization are all enforced server-side.
-- A user must not infer or access a protected object merely by changing an ID (BOLA/IDOR defense).
-- Role changes, deactivation, policy changes, replays, Fault Lab operations and release decisions are audited.
-- Normal catalog operators cannot alter quality policy or audit records.
-- Quality evidence ingestion does not grant release-decision permission.
-- `quality:policy:admin` is separate from generic `quality:write` and is required for formulas, risk policies and gate definitions.
-- A single-person demo may hold several roles, but the model must preserve separation and show when segregation of duties is not achieved.
-- Administrative bootstrap and prevention of accidental removal of the last required administrator need explicit acceptance criteria before implementation.
+- Permissões representam capacidades como catalog:write e release:decide; roles agrupam capacidades.
+- Autorização de endpoint, objeto e transição de estado é sempre aplicada no servidor.
+- Um usuário não deve inferir nem acessar objeto protegido apenas alterando um ID (defesa contra BOLA/IDOR).
+- Alterações de role, desativação, mudanças de política, replays, operações do Laboratório de Falhas e decisões de release são auditadas.
+- Operadores normais de catálogo não podem alterar política de qualidade nem registros de auditoria.
+- Ingestão de evidências de qualidade não concede permissão de decisão de release.
+- quality:policy:admin é separada de quality:write genérica e é exigida para fórmulas, políticas de risco e definições de gates.
+- Uma demonstração individual pode acumular várias roles, mas o modelo deve preservar a separação e mostrar quando a segregação de funções não é alcançada.
+- Bootstrap administrativo e prevenção da remoção acidental do último administrador necessário precisam de critérios de aceite explícitos antes da implementação.
 
-Authorization policy must be tested through allowed and denied examples. Hiding buttons is usability, not access control.
+A política de autorização deve ser testada com exemplos permitidos e negados. Ocultar botões é usabilidade, não controle de acesso.
 
-The initial `ADMIN`, `QUALITY_MANAGER`, `OPERATOR` and `VIEWER` responsibility matrix is defined in [REQUIREMENTS.md](REQUIREMENTS.md#minimum-conceptual-role-matrix). Before real authentication exists, catalog mutation is a local-development preview only and external exposure is a blocking security failure.
+A matriz inicial de responsabilidades ADMIN, QUALITY_MANAGER, OPERATOR e VIEWER está definida em [REQUIREMENTS.md](REQUIREMENTS.md#matriz-conceitual-mínima-de-roles). Antes da autenticação real, a mutação do catálogo é apenas uma prévia de desenvolvimento local e a exposição externa é uma falha bloqueante de segurança.
 
-## Input validation and output safety
+## Validação de entrada e segurança da saída
 
-- Use explicit request/command models and allowlisted fields to prevent mass assignment.
-- Enforce size, type, range, format, state, referential and business-invariant validation.
-- Normalize only where rules explicitly require it; validate canonical forms consistently (for example SKU).
-- Use parameterized queries/ORM binding; never concatenate untrusted SQL, commands or object paths.
-- Allowlist sortable/filterable fields and cap query complexity, page sizes and result volumes.
-- Encode output for its actual HTML/URL/JSON context and apply a restrictive Content Security Policy to the frontend.
-- Treat product descriptions/names as untrusted content even when entered by authenticated users.
-- Avoid unsafe deserialization and polymorphic type activation from input.
-- Error contracts expose stable client-safe codes and correlation IDs, never stack traces, SQL, hostnames or secrets.
-- Validate message/event and quality ingestion schema plus source/build provenance; do not trust CI payload claims solely because they are well-formed.
+- Usar modelos explícitos de solicitação/comando e campos permitidos para impedir mass assignment.
+- Aplicar validação de tamanho, tipo, intervalo, formato, estado, referência e invariantes de negócio.
+- Normalizar somente onde regras exigirem explicitamente; validar formas canônicas consistentemente, como SKU.
+- Usar consultas parametrizadas/binding do ORM; nunca concatenar SQL, comandos ou caminhos de objeto não confiáveis.
+- Permitir somente campos de ordenação/filtro aprovados e limitar complexidade de consulta, tamanho de página e volume de resultados.
+- Codificar saída para seu contexto real de HTML/URL/JSON e aplicar Content Security Policy restritiva ao frontend.
+- Tratar descrições/nomes de produto como conteúdo não confiável mesmo quando inseridos por usuários autenticados.
+- Evitar desserialização insegura e ativação de tipos polimórficos vindos da entrada.
+- Contratos de erro expõem códigos seguros e estáveis e IDs de correlação, nunca stack traces, SQL, hostnames ou secrets.
+- Validar schema de mensagem/evento e ingestão de qualidade, além da proveniência da fonte/build; não confiar em alegações do payload da CI somente porque estão bem formadas.
 
-## Secure upload and media processing
+## Upload seguro e processamento de mídia
 
-Product images are hostile until validated and processed.
+Imagens de produtos são hostis até serem validadas e processadas.
 
-Required controls:
+Controles exigidos:
 
-- authorization and object-level product permission before upload;
-- conservative total/request/file size, dimensions, pixel/decompression and processing-time limits;
-- content signature/magic-byte and safe decoder validation, not extension/MIME alone;
-- allowlist of genuinely needed raster formats; SVG is rejected initially because of active content risk;
-- server-generated opaque object names; original name retained only as sanitized metadata if needed;
-- private storage by default, separate pending/processed prefixes or buckets where useful;
-- processing in a constrained context with no unnecessary network/filesystem privileges;
-- re-encoding into approved output variants to reduce embedded/active content risk;
-- checksum, media metadata, status and audit trail;
-- safe `Content-Type`, `Content-Disposition`, nosniff and delivery authorization;
-- cleanup/reconciliation for failed, orphan and deleted objects;
-- antivirus scanning only as defense in depth, not a substitute for validation and isolation.
+- autorização e permissão de produto no nível do objeto antes do upload;
+- limites conservadores de tamanho total/solicitação/arquivo, dimensões, pixels/descompressão e tempo de processamento;
+- validação de assinatura/magic bytes do conteúdo e decoder seguro, não apenas extensão/MIME;
+- allowlist de formatos raster realmente necessários; SVG é inicialmente rejeitado pelo risco de conteúdo ativo;
+- nomes de objeto opacos gerados pelo servidor; nome original retido apenas como metadado sanitizado quando necessário;
+- armazenamento privado por padrão, com prefixos/buckets separados para pendente/processado quando útil;
+- processamento em contexto restrito sem privilégios desnecessários de rede/sistema de arquivos;
+- recodificação em variantes de saída aprovadas para reduzir risco de conteúdo incorporado/ativo;
+- checksum, metadados de mídia, status e trilha de auditoria;
+- Content-Type, Content-Disposition, nosniff e autorização de entrega seguros;
+- limpeza/reconciliação de objetos com falha, órfãos e excluídos;
+- varredura antivírus apenas como defesa em profundidade, não substituto da validação e do isolamento.
 
-Signed URLs, if used, are short-lived, scoped to one object/action and never logged with credentials. Image metadata (including location/EXIF) is stripped unless a requirement justifies retention.
+URLs assinadas, se usadas, são de curta duração, restritas a um objeto/ação e nunca registradas com credenciais. Metadados da imagem, incluindo localização/EXIF, são removidos salvo requisito que justifique retenção.
 
-## API security
+## Segurança da API
 
-The API design follows [API_SPEC.md](API_SPEC.md) and addresses OWASP API risks:
+O design da API segue [API_SPEC.md](API_SPEC.md) e aborda riscos OWASP de API:
 
-- object/function/property authorization on every protected operation;
-- bounded payload, pagination, rate, execution time and expensive search;
-- explicit state-transition models and idempotency/conflict controls;
-- safe CORS allowlist and security headers;
-- CSRF defense if ambient browser credentials are used;
-- schema/version validation for APIs and events;
-- dependency timeouts and controlled error mapping;
-- inventory of endpoints, versions and deprecation;
-- abuse monitoring for login, uploads, ingestion, replay and Fault Lab;
-- no framework entity exposure or undocumented debug/admin endpoint.
+- autorização de objeto/função/propriedade em toda operação protegida;
+- limites de payload, paginação, taxa, tempo de execução e busca custosa;
+- modelos explícitos de transição de estado e controles de idempotência/conflito;
+- allowlist segura de CORS e headers de segurança;
+- defesa CSRF se credenciais ambientes do navegador forem usadas;
+- validação de schema/versão para APIs e eventos;
+- timeouts de dependência e mapeamento controlado de erro;
+- inventário de endpoints, versões e depreciações;
+- monitoramento de abuso para login, uploads, ingestão, replay e Laboratório de Falhas;
+- nenhum endpoint debug/admin do framework exposto ou não documentado.
 
-Rate limiting is risk-based and layered. It must not be the only defense against expensive unbounded operations.
+Limite de taxa é baseado em risco e aplicado em camadas. Não deve ser a única defesa contra operações custosas sem limite.
 
-## Secrets and configuration
+## Secrets e configuração
 
-- No real secret in source, examples, test data, Docker image layers or committed environment files.
-- `.env.example` may document names with inert placeholders; `.env` remains ignored.
-- Local development uses generated or developer-owned values; CI uses protected secret storage with least privilege.
-- Prefer short-lived/workload credentials where supported; rotate long-lived credentials and document ownership.
-- Separate credentials per environment and component; database, broker and object-store accounts receive only needed permissions.
-- Fail startup when a required secret is missing or insecure for the selected environment; never silently use a production-unsafe default.
-- Redact common and structured secret fields at logging/telemetry boundaries and test redaction.
-- Secret scanning runs before release and ideally before commit/PR.
+- Nenhum secret real no código, exemplos, dados de teste, camadas de imagem Docker ou arquivos de ambiente versionados.
+- .env.example pode documentar nomes com placeholders inertes; .env permanece ignorado.
+- Desenvolvimento local usa valores gerados ou pertencentes ao desenvolvedor; CI usa armazenamento protegido de secrets com privilégio mínimo.
+- Preferir credenciais de curta duração/workload quando suportadas; rotacionar credenciais de longa duração e documentar responsabilidade.
+- Separar credenciais por ambiente e componente; contas de banco, broker e object store recebem somente as permissões necessárias.
+- Falhar a inicialização quando secret exigido estiver ausente ou inseguro para o ambiente selecionado; nunca usar silenciosamente um padrão inseguro para produção.
+- Redigir campos comuns e estruturados de secrets nos limites de logging/telemetria e testar a redação.
+- Varredura de secrets executa antes da release e, idealmente, antes do commit/PR.
 
-## Logging, telemetry and evidence safety
+## Segurança de logs, telemetria e evidências
 
-Security logging records outcome and attribution, not sensitive content. Never log:
+Logging de segurança registra resultado e atribuição, não conteúdo sensível. Nunca registrar:
 
-- passwords, hashes, bearer/refresh tokens, session cookies or secret keys;
-- complete authorization headers or signed URLs;
-- arbitrary request/response bodies;
-- raw uploaded files;
-- unnecessary personal information or full quality artifacts.
+- senhas, hashes, bearer/refresh tokens, cookies de sessão ou chaves secretas;
+- headers completos de autorização ou URLs assinadas;
+- corpos arbitrários de solicitação/resposta;
+- arquivos brutos recebidos;
+- dados pessoais desnecessários ou artefatos completos de qualidade.
 
-Use structured allowlisted fields, pseudonymous stable IDs where appropriate, correlation/trace IDs and centralized access controls. Sanitize line breaks/control characters to prevent log injection. Telemetry export failure must not bypass a security control; critical audit persistence follows fail-closed policy defined in requirements.
+Usar campos estruturados permitidos, IDs estáveis pseudônimos quando apropriado, IDs de correlação/trace e controles centralizados de acesso. Sanitizar quebras de linha/caracteres de controle para impedir injeção em log. Falha na exportação de telemetria não deve contornar controle de segurança; persistência crítica de auditoria segue a política fail-closed definida nos requisitos.
 
-Evidence files can contain secrets, personal data or internal paths. Ingestion requires content/size policy, access control, retention and redaction. Broad Quality Control Center read access does not automatically grant access to every raw artifact.
+Arquivos de evidência podem conter secrets, dados pessoais ou caminhos internos. A ingestão exige política de conteúdo/tamanho, controle de acesso, retenção e redação. Acesso amplo de leitura ao Centro de Controle de Qualidade não concede automaticamente acesso a todo artefato bruto.
 
-The evidence `source` claimed in a payload is never authoritative. The effective source is derived from, or obligatorily validated against, the authenticated scoped identity and bound where available to repository, workflow, commit SHA, immutable build identity and schema version. Source run ID plus canonical payload fingerprint provides replay/conflict detection. Artifact signatures/attestations remain a future strengthening option.
+A source declarada em um payload de evidência nunca é autoridade. A fonte efetiva é derivada ou obrigatoriamente validada contra a identidade autenticada e delimitada e, quando disponível, vinculada a repositório, workflow, commit SHA, identidade imutável do build e versão do schema. ID de execução da fonte mais fingerprint canônico do payload oferecem detecção de replay/conflito. Assinaturas/atestações de artefatos continuam sendo opção futura de fortalecimento.
 
-## Audit strategy
+## Estratégia de auditoria
 
-Audit events are append-only under normal operations and include UTC time, authenticated actor/service, action, target, outcome, reason code, source and correlation ID. Priority events include:
+Eventos de auditoria são append-only durante operações normais e incluem horário UTC, ator/serviço autenticado, ação, alvo, resultado, código de motivo, fonte e ID de correlação. Eventos prioritários incluem:
 
-- authentication success/failure/revocation indicators;
-- role, permission and user-status changes;
-- product/catalog/media mutations;
-- failed authorization and suspicious abuse patterns;
-- integration replay and terminal failure handling;
-- quality policy/gate changes and evidence ingestion rejection;
-- Fault Lab activation/stop/expiry;
-- release recommendation snapshot, final decision and exception.
+- indicadores de sucesso/falha/revogação de autenticação;
+- alterações de role, permissão e status de usuário;
+- mutações de produto/catálogo/mídia;
+- autorização negada e padrões suspeitos de abuso;
+- replay de integração e tratamento de falha terminal;
+- alterações de política/gate de qualidade e rejeição de ingestão de evidência;
+- ativação/parada/expiração do Laboratório de Falhas;
+- snapshot da recomendação de release, decisão final e exceção.
 
-Audit access is restricted, queries are themselves auditable where risk warrants, clocks are synchronized and retention/tamper-detection policy is defined before production use. Audit data is not silently editable from the application.
+O acesso à auditoria é restrito, consultas também são auditáveis quando o risco justificar, relógios são sincronizados e política de retenção/detecção de adulteração é definida antes do uso em produção. Dados de auditoria não são editáveis silenciosamente pela aplicação.
 
-The following future commands require durable audit acceptance before reporting success:
+Os futuros comandos a seguir exigem aceitação durável de auditoria antes de informar sucesso:
 
-- privileged user creation/disablement and role assignment/removal;
-- quality formula, risk policy and gate definition changes;
-- final release decisions and approved exceptions;
-- replay of terminal integration failures;
-- Fault Lab activation or parameter/scope change;
-- credential recovery or privileged secret/identity rotation when implemented.
+- criação/desativação privilegiada de usuário e atribuição/remoção de role;
+- alterações de fórmula de qualidade, política de risco e definição de gates;
+- decisões finais de release e exceções aprovadas;
+- replay de falhas terminais da integração;
+- ativação ou alteração de parâmetro/escopo do Laboratório de Falhas;
+- recuperação de credencial ou rotação privilegiada de secret/identidade quando implementada.
 
-Catalog business-change audit may be an eventually consistent projection from its committed outbox intent, with retry and alerting. Containment must never be prevented by audit failure: Fault Lab emergency stop/session revocation proceeds and raises a critical alert when its audit append cannot complete. The append boundary receives actor/correlation snapshots and does not call Auth, preventing a dependency cycle.
+A auditoria de alterações de negócio do catálogo pode ser uma projeção eventualmente consistente da intenção confirmada da outbox, com retry e alerta. Contenção nunca deve ser impedida por falha de auditoria: parada emergencial do Laboratório de Falhas/revogação de sessão prossegue e gera alerta crítico quando o append de auditoria não puder ser concluído. O limite de append recebe snapshots de ator/correlação e não chama Auth, evitando ciclo de dependência.
 
-## External integration and messaging security
+## Segurança da integração externa e mensageria
 
-- Treat the downstream mock and messages as untrusted even within Docker networks.
-- Use separate least-privilege broker accounts/vhosts/permissions per component when configured.
-- Validate schema, event type/version, size and required identities before processing.
-- Enforce idempotency and guard replay; do not trust delivery count as proof of maliciousness by itself.
-- Authenticate and encrypt downstream communication outside local-only controlled environments.
-- Time out calls, bound retries and avoid credential leakage in error bodies/telemetry.
-- Dead-letter/replay access is privileged and audited; payloads remain subject to data classification.
-- Do not deserialize arbitrary classes or execute message-provided expressions.
+- Tratar downstream e mensagens como não confiáveis mesmo dentro de redes Docker.
+- Usar contas/vhosts/permissões separados e com privilégio mínimo no broker por componente quando configurado.
+- Validar schema, tipo/versão de evento, tamanho e identidades exigidas antes do processamento.
+- Aplicar idempotência e proteger contra replay; não tratar contagem de entregas como prova isolada de malícia.
+- Autenticar e criptografar comunicação downstream fora de ambientes controlados exclusivamente locais.
+- Definir timeout, limitar retries e evitar vazamento de credenciais em corpos de erro/telemetria.
+- Acesso a dead-letter/replay é privilegiado e auditado; payloads permanecem sujeitos à classificação de dados.
+- Não desserializar classes arbitrárias nem executar expressões fornecidas por mensagens.
 
-## Quality Engine and release integrity
+## Integridade do Motor de Qualidade e da release
 
-- Evidence sources use authenticated, scoped identities and idempotent ingestion.
-- Release/build identity, source, schema, timestamp and freshness are validated.
-- Formula, weights, gates and risk policy are versioned, reviewed and audited.
-- Historical evaluation inputs and versions are retained or immutably referenced.
-- Missing/error/stale evidence is explicit, never coerced to passing.
-- Critical gate outcomes cannot be overridden by score calculation.
-- Human final decisions and any allowed exception require permission, rationale, evidence snapshot and expiry.
-- Dashboard presentation must distinguish recommendation, final decision and stale data to prevent social-engineering-by-UI.
+- Fontes de evidência usam identidades autenticadas, delimitadas e ingestão idempotente.
+- Identidade de release/build, fonte, schema, timestamp e atualização são validados.
+- Fórmula, pesos, gates e política de risco são versionados, revisados e auditados.
+- Entradas e versões das avaliações históricas são retidas ou referenciadas de modo imutável.
+- Evidência ausente/com erro/desatualizada é explícita, nunca convertida em aprovação.
+- Resultados de gates críticos não podem ser sobrepostos pelo cálculo da pontuação.
+- Decisões humanas finais e qualquer exceção permitida exigem permissão, justificativa, snapshot de evidência e expiração.
+- A apresentação no dashboard deve distinguir recomendação, decisão final e dados desatualizados para impedir engenharia social pela UI.
 
-## Fault Lab security and safety
+## Segurança do Laboratório de Falhas
 
-- Compile/configure Fault Lab out of production exposure or deny through multiple independent controls.
-- Default off in every environment; only explicit allowlisted scenarios and scopes.
-- Strong permission distinct from ordinary QA/catalog permissions.
-- Maximum intensity/duration, automatic TTL, emergency stop and environment identity check.
-- No arbitrary URL, SQL, command, script or expression injection through fault parameters.
-- Every activation, change, expiry and stop is audited and visibly indicated.
-- Experiments define abort criteria and cannot target systems outside the controlled AEGIS environment.
+- Compilar/configurar o Laboratório de Falhas fora da exposição de produção ou negar por múltiplos controles independentes.
+- Desligado por padrão em todo ambiente; somente cenários e escopos explicitamente permitidos.
+- Permissão forte, distinta de permissões comuns de QA/catálogo.
+- Intensidade/duração máximas, TTL automático, parada de emergência e verificação da identidade do ambiente.
+- Nenhum parâmetro de falha aceita injeção arbitrária de URL, SQL, comando, script ou expressão.
+- Toda ativação, alteração, expiração e parada é auditada e visivelmente indicada.
+- Experimentos definem critérios de aborto e não podem atingir sistemas fora do ambiente controlado do AEGIS.
 
-## Supply-chain and CI/CD security
+## Segurança da cadeia de suprimentos e CI/CD
 
-When implementation begins:
+Quando a implementação começar:
 
-- pin tool/action dependency versions to immutable or controlled references where feasible;
-- review dependency necessity, provenance, maintenance and license;
-- generate dependency inventory/SBOM for release candidates as maturity grows;
-- scan dependencies, source, secrets and container images under versioned policy;
-- protect default branch and required gates;
-- restrict workflow token permissions and untrusted pull-request secret access;
-- produce traceable artifacts from reviewed source and record commit/build identity;
-- separate build from deployment authority; do not let test-report ingestion credentials deploy;
-- patch based on exploitability and exposure while preserving critical severity hard blocks.
+- fixar versões de ferramentas/actions em referências imutáveis ou controladas quando viável;
+- revisar necessidade, proveniência, manutenção e licença de dependências;
+- gerar inventário de dependências/SBOM para candidatos de release conforme a maturidade crescer;
+- verificar dependências, código-fonte, secrets e imagens de container sob política versionada;
+- proteger a branch padrão e gates exigidos;
+- restringir permissões do token do workflow e acesso a secrets por pull requests não confiáveis;
+- produzir artefatos rastreáveis a partir de código revisado e registrar identidade de commit/build;
+- separar autoridade de build da de deploy; credenciais de ingestão de relatórios de teste não podem fazer deploy;
+- corrigir segundo explorabilidade e exposição, preservando bloqueios críticos de severidade.
 
-## Initial threat model
+## Modelo de ameaças inicial
 
-The table uses STRIDE as a prompt, not a completeness claim.
+A tabela usa STRIDE como estímulo, não como alegação de completude.
 
-| Threat | Boundary/asset | Example | Initial mitigations | Residual/open risk |
+| Ameaça | Limite/ativo | Exemplo | Mitigações iniciais | Risco residual/em aberto |
 | --- | --- | --- | --- | --- |
-| Spoofing | Authentication | credential stuffing or stolen token | adaptive hashing, generic errors, rate limit, expiry/revocation, TLS, audit | MFA and identity mechanism undecided |
-| Spoofing | Quality ingestion | forged CI source reports tests passed | scoped service identity, source/run idempotency, build provenance, audit | artifact signing/attestation maturity open |
-| Tampering | Catalog | unauthorized price/stock mutation | RBAC/object checks, validation, concurrency, history/audit | role matrix not finalized |
-| Tampering | Quality policy | weights/gates altered to approve release | separate permission, versioning, review, audit, immutable historical evaluation | segregation in single-person portfolio |
-| Repudiation | Release | approver denies exception/decision | attributable immutable decision and evidence snapshot | stronger non-repudiation/signing future |
-| Information disclosure | Errors/telemetry | token, SQL or personal data in logs/evidence | allowlisted structured fields, redaction tests, safe errors, access/retention | third-party tool defaults need review |
-| Information disclosure | Object storage | guessed/public image or evidence URL | private buckets, opaque keys, object authorization, short signed URLs | CDN/caching design open |
-| Denial of service | API/search | huge page/query/upload/report | size/page/time/rate limits, streaming, quotas, backpressure | exact limits require baseline |
-| Denial of service | Image processing | decompression bomb or malicious decoder input | pixel/size/time limits, re-encode, isolated least privilege | malware/decoder choice open |
-| Denial of service | Messaging | retry storm or poison message | classification, bounded backoff/jitter, DLQ, circuit policy, alert | topology/capacity undecided |
-| Elevation of privilege | API | BOLA/IDOR or mass assignment | object/function/property auth, explicit command models, negative tests | authorization library/central policy undecided |
-| Elevation of privilege | Fault Lab | ordinary user activates database delay | distinct permission, environment deny, allowlist, TTL, audit | independent production guard design pending |
-| Integrity/replay | Integration | duplicate message repeats downstream change | event identity, idempotent consumer/downstream key, atomic outcome | downstream idempotency behavior must be contracted |
-| Integrity | Quality score | stale/missing evidence treated as pass | freshness, insufficient-evidence state, hard gates, formula version | weights/thresholds need calibration |
-| Supply chain | Build | malicious dependency/action | pinning, least-privilege workflow, scanning, review, provenance | signing/SLSA target not selected |
+| Spoofing | Autenticação | credential stuffing ou token roubado | hash adaptativo, erros genéricos, limite de taxa, expiração/revogação, TLS, auditoria | MFA e mecanismo de identidade não decididos |
+| Spoofing | Ingestão de qualidade | fonte de CI forjada informa testes aprovados | identidade de serviço delimitada, idempotência de fonte/execução, proveniência do build, auditoria | maturidade de assinatura/atestação de artefato em aberto |
+| Tampering | Catálogo | mutação não autorizada de preço/estoque | RBAC/verificações de objeto, validação, concorrência, histórico/auditoria | matriz de roles não finalizada |
+| Tampering | Política de qualidade | pesos/gates alterados para aprovar release | permissão separada, versionamento, revisão, auditoria, avaliação histórica imutável | segregação em portfólio de uma pessoa |
+| Repúdio | Release | aprovador nega exceção/decisão | decisão atribuível e imutável e snapshot de evidência | não repúdio/assinatura mais forte no futuro |
+| Divulgação de informação | Erros/telemetria | token, SQL ou dados pessoais em logs/evidências | campos estruturados permitidos, testes de redação, erros seguros, acesso/retenção | padrões de ferramentas de terceiros exigem revisão |
+| Divulgação de informação | Object storage | URL de imagem/evidência adivinhada ou pública | buckets privados, chaves opacas, autorização de objeto, URLs assinadas curtas | design de CDN/cache em aberto |
+| Negação de serviço | API/busca | página/consulta/upload/relatório enorme | limites de tamanho/página/tempo/taxa, streaming, quotas, backpressure | limites exatos exigem baseline |
+| Negação de serviço | Processamento de imagem | bomba de descompressão ou entrada maliciosa no decoder | limites de pixels/tamanho/tempo, recodificação, privilégio mínimo isolado | escolha de malware/decoder em aberto |
+| Negação de serviço | Mensageria | tempestade de retry ou mensagem problemática | classificação, backoff/jitter limitado, DLQ, política de circuito, alerta | topologia/capacidade não decididas |
+| Elevação de privilégio | API | BOLA/IDOR ou mass assignment | autorização de objeto/função/propriedade, modelos explícitos de comando, testes negativos | biblioteca de autorização/política central não decidida |
+| Elevação de privilégio | Laboratório de Falhas | usuário comum ativa atraso no banco | permissão distinta, negação por ambiente, allowlist, TTL, auditoria | design de proteção independente em produção pendente |
+| Integridade/replay | Integração | mensagem duplicada repete alteração downstream | identidade de evento, consumidor/chave downstream idempotente, resultado atômico | comportamento de idempotência downstream deve ser contratado |
+| Integridade | Pontuação de qualidade | evidência ausente/desatualizada tratada como aprovada | atualização, estado de evidência insuficiente, gates críticos, versão da fórmula | pesos/limites precisam de calibração |
+| Cadeia de suprimentos | Build | dependência/action maliciosa | fixação de versões, workflow com privilégio mínimo, varredura, revisão, proveniência | meta de assinatura/SLSA não selecionada |
 
-## OWASP-oriented verification map
+## Mapa de verificação orientado pela OWASP
 
-| Concern | AEGIS focus |
+| Preocupação | Foco do AEGIS |
 | --- | --- |
-| Broken access control / API BOLA | RBAC plus resource-level and state-transition negative tests |
-| Cryptographic failures | mature libraries, TLS, protected secrets, no custom cryptography |
-| Injection | explicit models, parameterized queries, safe output encoding, no arbitrary Fault Lab expressions |
-| Insecure design | abuse cases, hard gates, idempotency, bounded retry, threat review per phase |
-| Security misconfiguration | environment-safe defaults, no debug endpoints, headers/CORS, least-privilege dependencies |
-| Vulnerable/outdated components | inventory, scanning, triage, critical block and patch ownership |
-| Authentication failures | generic responses, session lifecycle, brute-force protections and audit |
-| Integrity failures | versioned contracts, provenance, idempotency, controlled CI dependencies |
-| Logging/monitoring failures | safe security events, alerts, correlation and tested investigation paths |
-| SSRF | do not accept arbitrary downstream/object URLs; allowlist destinations and restrict worker egress |
+| Controle de acesso quebrado / API BOLA | RBAC mais testes negativos no nível de recurso e transição de estado |
+| Falhas criptográficas | bibliotecas maduras, TLS, secrets protegidos, sem criptografia customizada |
+| Injeção | modelos explícitos, consultas parametrizadas, codificação segura de saída, sem expressões arbitrárias no Laboratório de Falhas |
+| Design inseguro | casos de abuso, gates críticos, idempotência, retry limitado, revisão de ameaças por fase |
+| Configuração incorreta de segurança | padrões seguros por ambiente, sem endpoints debug, headers/CORS, dependências de privilégio mínimo |
+| Componentes vulneráveis/desatualizados | inventário, varredura, triagem, bloqueio crítico e responsável pela correção |
+| Falhas de autenticação | respostas genéricas, ciclo de sessão, proteção contra força bruta e auditoria |
+| Falhas de integridade | contratos versionados, proveniência, idempotência, dependências controladas da CI |
+| Falhas de logging/monitoramento | eventos seguros de segurança, alertas, correlação e caminhos de investigação testados |
+| SSRF | não aceitar URLs arbitrárias de downstream/objeto; permitir destinos explicitamente e restringir egress do worker |
 
-## Security review and testing cadence
+## Cadência de revisão e testes de segurança
 
-- Requirements/design: identify assets, abuse cases, authorization, data classification and failure mode.
-- Pull request: secure review plus applicable static, secret and dependency checks.
-- Feature/integration: authorization, negative API, upload, messaging and data integrity tests.
-- Release candidate: triaged findings, hard gate evaluation, residual risk and exception review.
-- Periodic/major change: update threat model and perform targeted manual testing.
-- After incident/defect: preserve evidence, assess similar paths and add prevention/detection coverage.
+- Requisitos/design: identificar ativos, casos de abuso, autorização, classificação de dados e modo de falha.
+- Pull request: revisão segura mais verificações aplicáveis de código estático, secrets e dependências.
+- Funcionalidade/integração: testes de autorização, API negativa, upload, mensageria e integridade de dados.
+- Candidato a release: achados triados, avaliação de gate crítico, risco residual e revisão de exceção.
+- Mudança periódica/importante: atualizar modelo de ameaças e executar testes manuais direcionados.
+- Depois de incidente/defeito: preservar evidência, avaliar caminhos semelhantes e adicionar cobertura de prevenção/detecção.
 
-## Vulnerability handling
+## Tratamento de vulnerabilidades
 
-Report vulnerabilities privately to the repository owner until a formal channel exists. Record severity, exploitability, affected versions, evidence, containment, owner and target. Do not publish exploitable details or real credentials in issues. Remediation requires a regression/security test and review of related controls. Critical exploitable findings are hard blockers under [QUALITY_GATES.md](QUALITY_GATES.md).
+Relate vulnerabilidades de forma privada ao responsável pelo repositório até existir um canal formal. Registre severidade, explorabilidade, versões afetadas, evidência, contenção, responsável e alvo. Não publique detalhes exploráveis nem credenciais reais em itens. A correção exige teste de regressão/segurança e revisão de controles relacionados. Achados críticos exploráveis são bloqueios críticos conforme [QUALITY_GATES.md](QUALITY_GATES.md).
 
-## Security release checklist
+## Checklist de segurança da release
 
-- Authentication/session and authorization behavior matches the reviewed design.
-- New/changed inputs, files, APIs, events and evidence sources are threat-modeled.
-- No secret or sensitive artifact is introduced in source, logs or reports.
-- Dependency/source/image findings are triaged; hard blocks resolved.
-- Security tests and audit/redaction checks pass for changed risk.
-- Least-privilege configuration and environment differences are reviewed.
-- Relevant threats, residual risks, exceptions and documentation are current.
+- Comportamentos de autenticação/sessão e autorização correspondem ao design revisado.
+- Entradas, arquivos, APIs, eventos e fontes de evidência novos/alterados foram modelados quanto a ameaças.
+- Nenhum secret ou artefato sensível foi introduzido em código, logs ou relatórios.
+- Achados de dependência/código/imagem foram triados; bloqueios críticos resolvidos.
+- Testes de segurança e verificações de auditoria/redação passam para o risco alterado.
+- Configuração de privilégio mínimo e diferenças entre ambientes foram revisadas.
+- Ameaças relevantes, riscos residuais, exceções e documentação estão atualizados.
 
-## Open security decisions and risks
+## Decisões e riscos de segurança em aberto
 
-- Authentication architecture, MFA scope and administrator recovery.
-- Detailed role/permission matrix and exception approver separation.
-- Key/secret management for a future hosted environment.
-- Upload format/size limits, processing sandbox and malware-scanning role.
-- Evidence storage access, retention and redaction workflow.
-- Artifact provenance/signing target for v1.0.
-- Audit retention, tamper-evidence and privacy/deletion reconciliation.
-- Concrete rate limits and alert thresholds based on measured use.
+- Arquitetura de autenticação, escopo de MFA e recuperação de administrador.
+- Matriz detalhada de roles/permissões e separação do aprovador de exceções.
+- Gerenciamento de chaves/secrets para futuro ambiente hospedado.
+- Limites de formato/tamanho de upload, sandbox de processamento e papel da varredura de malware.
+- Acesso, retenção e fluxo de redação do armazenamento de evidências.
+- Meta de proveniência/assinatura de artefatos para v1.0.
+- Retenção, evidência de adulteração e conciliação de privacidade/exclusão da auditoria.
+- Limites concretos de taxa e alertas baseados em uso medido.

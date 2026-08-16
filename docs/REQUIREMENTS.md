@@ -1,192 +1,192 @@
-# AEGIS Requirements
+# Requisitos do AEGIS
 
-## Purpose and conventions
+## Finalidade e convenções
 
-This document is the initial product requirements baseline. It describes intended capabilities; roadmap version assignment does not mean a capability is already implemented.
+Este documento é a baseline inicial de requisitos do produto. Ele descreve capacidades pretendidas; a atribuição de uma versão no roadmap não significa que a capacidade já foi implementada.
 
-Requirement IDs are stable:
+Os IDs de requisitos são estáveis:
 
-- `REQ-<DOMAIN>-NNN`: functional requirement;
-- `NFR-<QUALITY>-NNN`: non-functional requirement;
-- `BR-<DOMAIN>-NNN`: business rule.
+- REQ-<DOMAIN>-NNN: requisito funcional;
+- NFR-<QUALITY>-NNN: requisito não funcional;
+- BR-<DOMAIN>-NNN: regra de negócio.
 
-Priority uses **Must**, **Conditional Must**, **Should** and **Could**. A Conditional Must becomes mandatory when its named capability/maturity applies and is explicitly `NOT_APPLICABLE` before then. Acceptance criteria use concise Given/When/Then language and must be refined with examples before implementation. A requirement is not complete merely because one happy-path automated test passes.
+A prioridade usa **Must**, **Conditional Must**, **Should** e **Could**. Um Conditional Must torna-se obrigatório quando sua capacidade/maturidade nomeada se aplica e permanece explicitamente NOT_APPLICABLE antes disso. Os critérios de aceite usam uma linguagem concisa no formato Dado/Quando/Então e devem ser refinados com exemplos antes da implementação. Um requisito não está concluído apenas porque um teste automatizado de caminho feliz passou.
 
-## Functional requirements
+## Requisitos funcionais
 
-### Identity and access (`AUTH`)
+### Identidade e acesso (AUTH)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-AUTH-001 | Must | The system shall authenticate an active user with supported credentials. | Given valid credentials for an active user, when authentication succeeds, then a time-limited session/token is issued without exposing secrets; invalid credentials return a generic unauthorized response. |
-| REQ-AUTH-002 | Must | The system shall end or invalidate an authenticated session. | Given an authenticated user, when logout or revocation completes, then the affected session cannot access protected endpoints. |
-| REQ-AUTH-003 | Must | Protected capabilities shall require authentication. | Given an anonymous or expired session, when a protected operation is attempted, then it is rejected as unauthenticated and no state changes. |
-| REQ-AUTH-004 | Must | Authorization shall be role- and permission-based. | Given users with different permissions, when they invoke the same operation, then only permitted actors succeed and denials are auditable. |
-| REQ-AUTH-005 | Must | Authorized administrators shall create/disable users and add/remove role assignments. | Every change validates actor/target, protects the last active administrator, revokes affected sessions after a critical permission change and emits the required fail-closed audit event. |
-| REQ-AUTH-006 | Should | Security-sensitive session events shall be visible to the affected user or an administrator. | Successful and failed login indicators contain time and safe client context without recording credentials or raw tokens. |
+| REQ-AUTH-001 | Must | O sistema deve autenticar um usuário ativo com credenciais suportadas. | Dadas credenciais válidas de um usuário ativo, quando a autenticação for bem-sucedida, então uma sessão/token com prazo limitado será emitida sem expor secrets; credenciais inválidas retornarão uma resposta genérica de não autorizado. |
+| REQ-AUTH-002 | Must | O sistema deve encerrar ou invalidar uma sessão autenticada. | Dado um usuário autenticado, quando logout ou revogação forem concluídos, então a sessão afetada não poderá acessar endpoints protegidos. |
+| REQ-AUTH-003 | Must | Capacidades protegidas devem exigir autenticação. | Dada uma sessão anônima ou expirada, quando uma operação protegida for tentada, então ela será rejeitada como não autenticada e nenhum estado será alterado. |
+| REQ-AUTH-004 | Must | A autorização deve ser baseada em roles e permissões. | Dados usuários com permissões diferentes, quando invocarem a mesma operação, então somente os atores autorizados terão sucesso e as negações serão auditáveis. |
+| REQ-AUTH-005 | Must | Administradores autorizados devem criar/desativar usuários e adicionar/remover atribuições de roles. | Toda alteração valida ator/alvo, protege o último administrador ativo, revoga as sessões afetadas após uma mudança crítica de permissão e emite o evento de auditoria fail-closed exigido. |
+| REQ-AUTH-006 | Should | Eventos de sessão sensíveis para segurança devem ser visíveis ao usuário afetado ou a um administrador. | Indicadores de login bem-sucedido e malsucedido contêm momento e contexto seguro do cliente sem registrar credenciais ou tokens brutos. |
 
-#### Minimum conceptual role matrix
+#### Matriz conceitual mínima de roles
 
-This is a planning baseline, not an implemented or exhaustive authorization policy. Exact permissions are reviewed before Phase 03.
+Esta é uma baseline de planejamento, não uma política de autorização implementada ou exaustiva. As permissões exatas serão revisadas antes da Fase 03.
 
-| Role | Intended responsibilities | Minimum conceptual permissions |
+| Role | Responsabilidades pretendidas | Permissões conceituais mínimas |
 | --- | --- | --- |
-| `ADMIN` | Create/disable users, assign/remove roles, inspect audit and perform platform administration | `admin:users`, `admin:roles`, `audit:read`; business permissions are granted explicitly rather than implied |
-| `QUALITY_MANAGER` | Manage releases/evidence, evaluate gates and record authorized release decisions | `quality:read`, `quality:write`, `release:decide`; `quality:policy:admin` is separate and must be granted explicitly |
-| `OPERATOR` | Operate catalog and media workflows | `catalog:read`, `catalog:write`, `catalog:history:read`, `media:read`, `media:write` |
-| `VIEWER` | Read authorized Commerce and quality summaries without mutation | `catalog:read`, `media:read`, `quality:read` |
+| ADMIN | Criar/desativar usuários, atribuir/remover roles, inspecionar auditoria e administrar a plataforma | admin:users, admin:roles, audit:read; permissões de negócio são concedidas explicitamente, não implicitamente |
+| QUALITY_MANAGER | Gerenciar releases/evidências, avaliar gates e registrar decisões autorizadas de release | quality:read, quality:write, release:decide; quality:policy:admin é separada e deve ser concedida explicitamente |
+| OPERATOR | Operar fluxos de catálogo e mídia | catalog:read, catalog:write, catalog:history:read, media:read, media:write |
+| VIEWER | Ler resumos autorizados de Commerce e qualidade sem mutação | catalog:read, media:read, quality:read |
 
-`quality:policy:admin` controls changes to score formulas, risk policies and gate definitions. It is never implied by generic `quality:write`. CI/evidence-ingestion identities are scoped service identities, not human roles, and do not receive release-decision or policy-administration permission.
+quality:policy:admin controla alterações em fórmulas de pontuação, políticas de risco e definições de gates. Nunca é implícita em quality:write genérica. Identidades de CI/ingestão de evidência são identidades de serviço com escopo, não roles humanas, e não recebem permissão para decisão de release ou administração de políticas.
 
-### Catalog (`CAT`)
+### Catálogo (CAT)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-CAT-001 | Must | Authorized users shall create a product with SKU, name, description, price, stock and category assignment. | Valid input creates one identifiable product; invalid fields yield field-level errors and no partial product. |
-| REQ-CAT-002 | Must | Authorized users shall retrieve a product by its stable identifier. | An existing visible product returns its current representation; an unknown identifier returns not found without leaking restricted data. |
-| REQ-CAT-003 | Must | Authorized users shall update allowed product attributes using concurrency protection. | A current version updates atomically and records history; a stale version returns a conflict without overwriting newer data. |
-| REQ-CAT-004 | Must | Authorized users shall deactivate a product without erasing required history. | Deactivation removes the product from default active results, preserves history and emits audit/integration events. |
-| REQ-CAT-005 | Must | Authorized users shall manage categories and their active state. | Valid category changes are persisted; a category in prohibited use cannot be removed or deactivated without an explicit policy-compliant outcome. |
-| REQ-CAT-006 | Must | Product SKU shall be normalized and unique. | Equivalent normalized SKUs cannot coexist; a duplicate returns conflict and does not change data. |
-| REQ-CAT-007 | Must | Product price and stock shall follow defined numeric rules. | Negative price or stock is rejected; decimal precision and currency are deterministic; valid boundary values persist exactly. |
-| REQ-CAT-008 | Must | Users shall search and filter the catalog. | Supported combinations of query, category and active state return only matching authorized records with the applied criteria represented in the response. |
-| REQ-CAT-009 | Must | Product collections shall be paginated and deterministically sorted. | Page size is bounded, invalid parameters are rejected and repeated requests over unchanged data return stable ordering. |
-| REQ-CAT-010 | Must | Material product changes shall create a product history record. | Each successful create/update/deactivate action records actor, time, product, action and a safe before/after change representation. |
-| REQ-CAT-011 | Should | Users shall view product history if authorized. | Results are chronological, paginated and do not expose redacted security-sensitive values. |
-| REQ-CAT-012 | Must | Catalog writes shall publish an internal domain event after successful commit. | Each material committed change produces one logically identifiable event for downstream handling; rolled-back changes do not publish a committed event. |
+| REQ-CAT-001 | Must | Usuários autorizados devem criar um produto com SKU, nome, descrição, preço, estoque e atribuição de categoria. | Entrada válida cria um produto identificável; campos inválidos geram erros no nível do campo e nenhum produto parcial. |
+| REQ-CAT-002 | Must | Usuários autorizados devem recuperar um produto por seu identificador estável. | Um produto visível existente retorna sua representação atual; um identificador desconhecido retorna não encontrado sem vazar dados restritos. |
+| REQ-CAT-003 | Must | Usuários autorizados devem atualizar atributos permitidos do produto com proteção de concorrência. | Uma versão atual é atualizada atomicamente e registra histórico; uma versão obsoleta retorna conflito sem sobrescrever dados mais novos. |
+| REQ-CAT-004 | Must | Usuários autorizados devem desativar um produto sem apagar o histórico necessário. | A desativação remove o produto dos resultados ativos padrão, preserva o histórico e emite eventos de auditoria/integração. |
+| REQ-CAT-005 | Must | Usuários autorizados devem gerenciar categorias e seu estado ativo. | Alterações válidas de categoria são persistidas; uma categoria em uso proibitivo não pode ser removida ou desativada sem um resultado explícito em conformidade com a política. |
+| REQ-CAT-006 | Must | O SKU de produto deve ser normalizado e único. | SKUs normalizados equivalentes não podem coexistir; uma duplicidade retorna conflito e não altera dados. |
+| REQ-CAT-007 | Must | Preço e estoque do produto devem seguir regras numéricas definidas. | Preço ou estoque negativo é rejeitado; precisão decimal e moeda são determinísticas; valores válidos de limite persistem exatamente. |
+| REQ-CAT-008 | Must | Usuários devem pesquisar e filtrar o catálogo. | Combinações suportadas de consulta, categoria e estado ativo retornam apenas registros autorizados correspondentes, com os critérios aplicados representados na resposta. |
+| REQ-CAT-009 | Must | Coleções de produtos devem ser paginadas e ordenadas deterministicamente. | O tamanho da página é limitado, parâmetros inválidos são rejeitados e solicitações repetidas sobre dados inalterados retornam ordenação estável. |
+| REQ-CAT-010 | Must | Alterações materiais do produto devem criar um registro de histórico. | Toda criação/atualização/desativação bem-sucedida registra ator, momento, produto, ação e uma representação segura da alteração antes/depois. |
+| REQ-CAT-011 | Should | Usuários devem visualizar o histórico do produto se autorizados. | Os resultados são cronológicos, paginados e não expõem valores sensíveis para segurança que tenham sido redigidos. |
+| REQ-CAT-012 | Must | Escritas do catálogo devem publicar um evento de domínio interno após commit bem-sucedido. | Toda alteração material confirmada produz um evento logicamente identificável para processamento downstream; alterações revertidas não publicam evento confirmado. |
 
-### Media (`MED`)
+### Mídia (MED)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-MED-001 | Must | Authorized users shall upload supported product images. | Type, signature, size and authorization are validated before durable acceptance; rejected files are not made publicly retrievable. |
-| REQ-MED-002 | Must | Uploaded media shall have an explicit processing lifecycle. | A media item transitions through documented states such as pending, processing, ready or failed, with reason codes for failure. |
-| REQ-MED-003 | Must | Image processing shall create only approved variants and metadata. | Successful processing records dimensions, type, checksum and storage references; binary content does not enter transactional tables. |
-| REQ-MED-004 | Must | Media retrieval shall enforce product visibility and safe content delivery. | Unauthorized access is rejected; responses use safe content types and do not expose internal storage credentials or paths. |
-| REQ-MED-005 | Must | Users shall associate, order and remove product image references. | Association changes are atomic, preserve audit/history needs and do not leave unintended public orphan objects. |
-| REQ-MED-006 | Should | Failed media processing shall support bounded retry or authorized reprocessing. | Retry is idempotent, attempt count is visible and terminal failure does not block unrelated product reads. |
+| REQ-MED-001 | Must | Usuários autorizados devem fazer upload de imagens de produto suportadas. | Tipo, assinatura, tamanho e autorização são validados antes da aceitação durável; arquivos rejeitados não se tornam recuperáveis publicamente. |
+| REQ-MED-002 | Must | Mídias recebidas devem ter um ciclo de processamento explícito. | Um item de mídia transita por estados documentados como pendente, processando, pronto ou falhou, com códigos de motivo para falha. |
+| REQ-MED-003 | Must | O processamento de imagens deve criar somente variantes e metadados aprovados. | O processamento bem-sucedido registra dimensões, tipo, checksum e referências de armazenamento; conteúdo binário não entra em tabelas transacionais. |
+| REQ-MED-004 | Must | A recuperação de mídia deve aplicar visibilidade do produto e entrega segura do conteúdo. | Acesso não autorizado é rejeitado; respostas usam content-types seguros e não expõem credenciais nem caminhos internos de armazenamento. |
+| REQ-MED-005 | Must | Usuários devem associar, ordenar e remover referências de imagens do produto. | Alterações de associação são atômicas, preservam necessidades de auditoria/histórico e não deixam objetos públicos órfãos não pretendidos. |
+| REQ-MED-006 | Should | Falhas no processamento de mídia devem permitir retry limitado ou reprocessamento autorizado. | O retry é idempotente, o número de tentativas é visível e a falha terminal não bloqueia leituras não relacionadas do produto. |
 
-### External integration (`INT`)
+### Integração externa (INT)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-INT-001 | Must | Material catalog changes shall be synchronized asynchronously to the External Sales Center Mock. | A committed eligible change creates a durable integration task and the user-facing catalog transaction does not depend on downstream availability. |
-| REQ-INT-002 | Must | Outbound messages shall carry a unique event ID, schema version, occurred time and correlation context. | Consumers can distinguish event identity/version and trace it to the initiating operation. |
-| REQ-INT-003 | Must | Consumers shall process duplicate deliveries idempotently. | Re-delivery of the same event does not duplicate the external business effect and produces an observable duplicate outcome. |
-| REQ-INT-004 | Must | Transient failures shall use bounded retry with backoff. | Eligible failures retry according to policy; attempts and next retry are observable; permanent failures are not retried indefinitely. |
-| REQ-INT-005 | Must | Exhausted or non-retryable messages shall enter a recoverable failure state. | The message and sanitized failure context are retained for authorized inspection and replay after remediation. |
-| REQ-INT-006 | Must | Event publication shall not lose committed catalog changes. | Catalog atomically stores product state, product history and its owned outbox intent; Integration claims/publishes that intent only through the Catalog publication port, with reconciliation for stuck records. |
-| REQ-INT-007 | Should | Authorized operators shall inspect synchronization status by product/event. | Status exposes pending, processing, delivered or failed state, attempts and safe timestamps without secrets. |
-| REQ-INT-008 | Should | Authorized operators shall replay eligible failed integration work. | Replay requires reason/actor, preserves the original identity relationship and cannot bypass validation or idempotency. |
+| REQ-INT-001 | Must | Alterações materiais do catálogo devem ser sincronizadas de forma assíncrona com o Mock do Centro de Vendas Externo. | Uma alteração elegível confirmada cria uma tarefa durável de integração e a transação de catálogo visível ao usuário não depende da disponibilidade downstream. |
+| REQ-INT-002 | Must | Mensagens de saída devem conter ID de evento único, versão de schema, momento de ocorrência e contexto de correlação. | Consumidores conseguem distinguir identidade/versão do evento e rastreá-lo até a operação originadora. |
+| REQ-INT-003 | Must | Consumidores devem processar entregas duplicadas de forma idempotente. | Uma nova entrega do mesmo evento não duplica o efeito de negócio externo e produz um resultado de duplicidade observável. |
+| REQ-INT-004 | Must | Falhas transitórias devem usar retry limitado com backoff. | Falhas elegíveis repetem conforme a política; tentativas e próximo retry são observáveis; falhas permanentes não repetem indefinidamente. |
+| REQ-INT-005 | Must | Mensagens esgotadas ou não repetíveis devem entrar em um estado de falha recuperável. | A mensagem e o contexto sanitizado da falha são retidos para inspeção e replay autorizados após a correção. |
+| REQ-INT-006 | Must | A publicação de eventos não deve perder alterações confirmadas do catálogo. | O Catálogo armazena atomicamente estado do produto, histórico do produto e sua intenção de outbox; a Integração reivindica/publica essa intenção somente pela porta de publicação do Catálogo, com reconciliação de registros travados. |
+| REQ-INT-007 | Should | Operadores autorizados devem inspecionar o status de sincronização por produto/evento. | O status expõe estados pendente, processando, entregue ou falhou, tentativas e timestamps seguros, sem secrets. |
+| REQ-INT-008 | Should | Operadores autorizados devem repetir trabalho de integração elegível que falhou. | O replay exige motivo/ator, preserva a relação de identidade original e não pode contornar validação ou idempotência. |
 
-### Audit (`AUD`)
+### Auditoria (AUD)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-AUD-001 | Must | Security- and business-relevant actions shall create immutable audit events. | Actor, action, target, outcome, time and correlation ID are recorded; normal application roles cannot edit an audit event. |
-| REQ-AUD-002 | Must | Authorized reviewers shall query audit events using bounded filters and pagination. | Results respect least privilege, deterministic order and retention/redaction policy. |
-| REQ-AUD-003 | Must | Audit failures shall be visible and shall fail closed for designated critical actions. | A critical action with unavailable durable audit acceptance is rejected; non-critical projections retry and alert. Emergency containment such as Fault Lab stop proceeds even if audit is degraded and raises a critical audit alert. |
+| REQ-AUD-001 | Must | Ações relevantes para segurança e negócio devem criar eventos de auditoria imutáveis. | Ator, ação, alvo, resultado, momento e ID de correlação são registrados; roles normais da aplicação não podem editar um evento de auditoria. |
+| REQ-AUD-002 | Must | Revisores autorizados devem consultar eventos de auditoria usando filtros limitados e paginação. | Os resultados respeitam privilégio mínimo, ordenação determinística e política de retenção/redação. |
+| REQ-AUD-003 | Must | Falhas de auditoria devem ser visíveis e devem operar em fail-closed para ações críticas designadas. | Uma ação crítica sem aceitação durável de auditoria disponível é rejeitada; projeções não críticas repetem e alertam. Contenções emergenciais, como parar o Laboratório de Falhas, prosseguem mesmo com auditoria degradada e geram alerta crítico de auditoria. |
 
-### Quality Control Center (`QLT`)
+### Centro de Controle de Qualidade (QLT)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-QLT-001 | Must | Authorized users shall create a release and associate immutable release candidates/build identities. | A release version is unique; each candidate references one immutable build identity and evidence cutoff, and a final decision identifies the exact candidate without overwriting previous candidates. |
-| REQ-QLT-002 | Must | The system shall register test suites and test cases with stable external references. | Cases include layer, owner, status, automation state and requirement links; duplicate external IDs are rejected. |
-| REQ-QLT-003 | Must | The system shall ingest test runs and individual results from approved sources. | Valid, authenticated payloads are idempotently accepted; malformed or unknown-schema payloads are rejected with actionable errors. |
-| REQ-QLT-004 | Must | Test results shall preserve execution context and evidence references. | Result status, duration, environment, build/commit identity and evidence metadata are retained without storing secrets. |
-| REQ-QLT-005 | Must | Requirements shall be traceable to cases, results, evidence, defects and releases. | A reviewer can navigate all available links in both directions and identify missing links. |
-| REQ-QLT-006 | Must | The system shall record defects and associate them with affected requirements, results and releases. | Severity, priority, status, owner/reference and history are captured; closure does not erase prior associations. |
-| REQ-QLT-007 | Must | The system shall ingest normalized security findings. | Source identity, rule, severity, affected component, state and evidence reference are retained; duplicates follow a documented fingerprint policy. |
-| REQ-QLT-008 | Must | The system shall ingest normalized performance results and thresholds. | Scenario, workload, percentile latency, throughput, error rate and threshold outcome are attributable to a build/release. |
-| REQ-QLT-009 | Conditional Must | The Quality Engine shall calculate an explainable Quality Score from versioned inputs and weights. | Each applicable score exposes formula version, contributing metrics, missing-data treatment and calculation time; before Quality Engine maturity it is explicitly `NOT_APPLICABLE`. |
-| REQ-QLT-010 | Conditional Must | The Quality Engine shall classify candidate risk using versioned policy. | The applicable level and contributing conditions are shown; identical inputs/policy produce the same result; before Quality Engine maturity it is explicitly `NOT_APPLICABLE`. |
-| REQ-QLT-011 | Must | The system shall evaluate versioned quality gates independently of numerical score. | Each required gate has an attributable outcome and reasons; any active critical blocking rule yields a blocking gate outcome and prevents approval; when recommendation capability applies, it forces `BLOCK` even when a calculated score is high. |
-| REQ-QLT-012 | Must | The system shall present an evidence summary for an exact release candidate/build. | Authorized users see evidence cutoff/freshness, test status, failures, defects, security findings, performance results, metrics and missing evidence without requiring a score or risk classification. |
-| REQ-QLT-013 | Must | An authorized human shall record the final release decision and rationale. | Approval/block/exception records actor, time, rationale, evidence snapshot and any time-bounded exception; a recommendation alone never deploys. |
-| REQ-QLT-014 | Should | Quality policies and gates shall be versioned and changes audited. | A release evaluation refers to the exact policy version; policy updates do not silently rewrite historical decisions. |
-| REQ-QLT-015 | Conditional Must | The Quality Engine shall produce an explainable release recommendation from gate results, score/risk when applicable and versioned policy. | The recommendation is `APPROVE`, `REVIEW` or `BLOCK`, identifies reasons and policy version, never overrides hard blockers and is `NOT_APPLICABLE` before the Quality Engine exists. |
+| REQ-QLT-001 | Must | Usuários autorizados devem criar uma release e associar candidatos/identidades de build imutáveis. | A versão da release é única; cada candidato referencia uma identidade imutável de build e corte de evidência, e uma decisão final identifica o candidato exato sem sobrescrever candidatos anteriores. |
+| REQ-QLT-002 | Must | O sistema deve registrar suítes e casos de teste com referências externas estáveis. | Casos incluem camada, responsável, status, estado de automação e links de requisitos; IDs externos duplicados são rejeitados. |
+| REQ-QLT-003 | Must | O sistema deve ingerir execuções de teste e resultados individuais de fontes aprovadas. | Payloads válidos e autenticados são aceitos de forma idempotente; payloads malformados ou com schema desconhecido são rejeitados com erros acionáveis. |
+| REQ-QLT-004 | Must | Resultados de testes devem preservar contexto de execução e referências de evidência. | Status do resultado, duração, ambiente, identidade de build/commit e metadados da evidência são retidos sem armazenar secrets. |
+| REQ-QLT-005 | Must | Requisitos devem ser rastreáveis a casos, resultados, evidências, defeitos e releases. | Um revisor consegue navegar por todos os links disponíveis nas duas direções e identificar links ausentes. |
+| REQ-QLT-006 | Must | O sistema deve registrar defeitos e associá-los aos requisitos, resultados e releases afetados. | Severidade, prioridade, status, responsável/referência e histórico são capturados; o fechamento não apaga associações anteriores. |
+| REQ-QLT-007 | Must | O sistema deve ingerir achados de segurança normalizados. | Identidade da fonte, regra, severidade, componente afetado, estado e referência de evidência são retidos; duplicidades seguem uma política de fingerprint documentada. |
+| REQ-QLT-008 | Must | O sistema deve ingerir resultados de performance e limites normalizados. | Cenário, workload, latência de percentil, throughput, taxa de erro e resultado do limite são atribuíveis a um build/release. |
+| REQ-QLT-009 | Conditional Must | O Motor de Qualidade deve calcular uma Pontuação de Qualidade explicável a partir de entradas e pesos versionados. | Toda pontuação aplicável expõe versão da fórmula, métricas contribuintes, tratamento de dados ausentes e momento do cálculo; antes da maturidade do Motor de Qualidade, fica explicitamente NOT_APPLICABLE. |
+| REQ-QLT-010 | Conditional Must | O Motor de Qualidade deve classificar o risco do candidato usando política versionada. | O nível aplicável e as condições contribuintes são exibidos; entradas/política idênticas produzem o mesmo resultado; antes da maturidade do Motor de Qualidade, fica explicitamente NOT_APPLICABLE. |
+| REQ-QLT-011 | Must | O sistema deve avaliar Gates de Qualidade versionados independentemente da pontuação numérica. | Todo gate exigido tem resultado e motivos atribuíveis; qualquer regra ativa de bloqueio crítico produz resultado bloqueante e impede aprovação; quando a recomendação se aplicar, força BLOCK mesmo se a pontuação calculada for alta. |
+| REQ-QLT-012 | Must | O sistema deve apresentar um resumo de evidências de um candidato/build exato de release. | Usuários autorizados veem corte/atualização de evidência, status de testes, falhas, defeitos, achados de segurança, resultados de performance, métricas e evidência ausente sem exigir pontuação ou classificação de risco. |
+| REQ-QLT-013 | Must | Uma pessoa autorizada deve registrar a decisão final de release e a justificativa. | Aprovação/bloqueio/exceção registra ator, momento, justificativa, snapshot de evidências e qualquer exceção com prazo; uma recomendação isolada nunca faz deploy. |
+| REQ-QLT-014 | Should | Políticas e Gates de Qualidade devem ser versionados e suas alterações auditadas. | Uma avaliação de release referencia a versão exata da política; atualizações de política não reescrevem silenciosamente decisões históricas. |
+| REQ-QLT-015 | Conditional Must | O Motor de Qualidade deve produzir uma recomendação de release explicável a partir dos resultados dos gates, pontuação/risco quando aplicáveis e política versionada. | A recomendação é APPROVE, REVIEW ou BLOCK, identifica motivos e versão da política, nunca sobrepõe bloqueios críticos e é NOT_APPLICABLE antes de o Motor de Qualidade existir. |
 
-### Fault Lab (`FLT`)
+### Laboratório de Falhas (FLT)
 
-| ID | Priority | Requirement | Acceptance criteria |
+| ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-FLT-001 | Must | Authorized users shall activate only predefined fault scenarios in permitted non-production environments. | Production is denied by design; activation records actor, scenario, scope, expiry and correlation marker. |
-| REQ-FLT-002 | Must | Initial scenarios shall cover downstream unavailability/timeout, API latency/HTTP 500, database latency, image failure and queue disruption. | Each implemented scenario has deterministic controls, blast-radius limits and an observable activation state. |
-| REQ-FLT-003 | Must | Faults shall expire automatically and support an emergency stop. | A fault cannot persist beyond its maximum TTL; stop is idempotent and its outcome is observable/audited. |
-| REQ-FLT-004 | Should | Fault experiments shall link hypothesis, telemetry, test execution and conclusion. | A completed experiment identifies expected behavior, observed signals and unresolved findings. |
+| REQ-FLT-001 | Must | Usuários autorizados devem ativar somente cenários de falha predefinidos em ambientes não produtivos permitidos. | Produção é negada por design; a ativação registra ator, cenário, escopo, expiração e marcador de correlação. |
+| REQ-FLT-002 | Must | Os cenários iniciais devem cobrir indisponibilidade/timeout downstream, latência/HTTP 500 da API, latência do banco de dados, falha de imagem e interrupção de fila. | Todo cenário implementado tem controles determinísticos, limites de blast radius e estado de ativação observável. |
+| REQ-FLT-003 | Must | Falhas devem expirar automaticamente e permitir parada de emergência. | Uma falha não pode persistir além do TTL máximo; a parada é idempotente e seu resultado é observável/auditado. |
+| REQ-FLT-004 | Should | Experimentos de falha devem vincular hipótese, telemetria, execução de teste e conclusão. | Um experimento concluído identifica comportamento esperado, sinais observados e achados não resolvidos. |
 
-## Non-functional requirements
+## Requisitos não funcionais
 
-Targets below are initial design goals. Exact thresholds must be baselined and versioned before becoming release gates.
+As metas abaixo são objetivos iniciais de design. Limites exatos devem ter baseline e versão definidos antes de se tornarem gates de release.
 
-| ID | Quality | Requirement / measurable acceptance |
+| ID | Qualidade | Requisito / aceite mensurável |
 | --- | --- | --- |
-| NFR-PERF-001 | Performance | For an agreed reference dataset and local/CI profile, catalog read endpoints should meet p95 <= 300 ms and write endpoints p95 <= 500 ms, excluding asynchronous downstream completion. |
-| NFR-PERF-002 | Performance | Default collection page size shall be 20 and the enforced maximum 100 unless an endpoint documents a stricter value. |
-| NFR-REL-001 | Reliability | Committed integration work shall be recoverable across process restart; no acknowledged message may be silently discarded. |
-| NFR-REL-002 | Reliability | Retry policies shall be bounded, use backoff with jitter where appropriate and expose terminal failure. |
-| NFR-SEC-001 | Security | All protected operations shall enforce server-side authentication and authorization; UI visibility is never an authorization control. |
-| NFR-SEC-002 | Security | Secrets, raw credentials, session tokens and sensitive personal data shall not appear in logs, traces, evidence or error responses. |
-| NFR-SEC-003 | Security | Dependencies and images shall be scanned under versioned policy; unresolved critical exploitable findings block release. |
-| NFR-OBS-001 | Observability | Inbound requests, asynchronous messages and integration attempts shall propagate or create correlation and trace context. |
-| NFR-OBS-002 | Observability | Critical flows shall expose structured logs, metrics and traces sufficient to locate the failing boundary without enabling sensitive-data leakage. |
-| NFR-OBS-003 | Observability | A test execution that triggers multiple requests shall preserve a bounded set of correlation IDs and associated trace IDs in evidence so each observed failure can be linked to the exact build and execution. |
-| NFR-TEST-001 | Testability | External boundaries, time, retry and fault behavior shall be controllable through safe interfaces/fakes in automated tests. |
-| NFR-TEST-002 | Testability | Each applicable Must or Conditional Must requirement shall have documented verification coverage before its target release is approved. |
-| NFR-DATA-001 | Data integrity | Transactional invariants shall be enforced at appropriate application and database layers; concurrent updates must not silently lose data. |
-| NFR-DATA-002 | Data quality | Evidence ingestion shall validate schema, source, timestamps and release/build identity and shall make missing or stale evidence visible. |
-| NFR-ACC-001 | Accessibility | User interfaces shall target WCAG 2.2 AA for supported critical flows, including keyboard access, visible focus, names/roles and contrast. |
-| NFR-COMP-001 | Compatibility | APIs and events shall use explicit versions and documented compatibility rules; breaking changes require migration planning. |
-| NFR-MAINT-001 | Maintainability | Module dependencies shall follow [ARCHITECTURE.md](ARCHITECTURE.md); new cross-module coupling or infrastructure requires review and, when significant, an ADR. |
-| NFR-PORT-001 | Portability | Once executable components exist, a contributor shall be able to start required local dependencies through a documented, reproducible workflow. |
-| NFR-PRIV-001 | Privacy | Personal and diagnostic data collection shall be minimized and governed by documented retention and deletion policies before production use. |
+| NFR-PERF-001 | Performance | Para um dataset de referência e perfil local/CI acordados, endpoints de leitura do catálogo devem atender p95 <= 300 ms e endpoints de escrita p95 <= 500 ms, excluindo a conclusão assíncrona downstream. |
+| NFR-PERF-002 | Performance | O tamanho padrão de coleções deve ser 20 e o máximo aplicado 100, salvo se um endpoint documentar valor mais restrito. |
+| NFR-REL-001 | Confiabilidade | Trabalho de integração confirmado deve ser recuperável após reinício de processo; nenhuma mensagem confirmada pode ser descartada silenciosamente. |
+| NFR-REL-002 | Confiabilidade | Políticas de retry devem ser limitadas, usar backoff com jitter quando apropriado e expor falha terminal. |
+| NFR-SEC-001 | Segurança | Todas as operações protegidas devem aplicar autenticação e autorização no servidor; visibilidade na UI nunca é controle de autorização. |
+| NFR-SEC-002 | Segurança | Secrets, credenciais brutas, tokens de sessão e dados pessoais sensíveis não devem aparecer em logs, traces, evidências ou respostas de erro. |
+| NFR-SEC-003 | Segurança | Dependências e imagens devem ser verificadas sob política versionada; achados críticos exploráveis não resolvidos bloqueiam a release. |
+| NFR-OBS-001 | Observabilidade | Solicitações recebidas, mensagens assíncronas e tentativas de integração devem propagar ou criar contexto de correlação e trace. |
+| NFR-OBS-002 | Observabilidade | Fluxos críticos devem expor logs estruturados, métricas e traces suficientes para localizar o limite da falha sem permitir vazamento de dados sensíveis. |
+| NFR-OBS-003 | Observabilidade | Uma execução de teste que dispare várias solicitações deve preservar um conjunto limitado de IDs de correlação e seus IDs de trace nas evidências, para que cada falha observada seja ligada ao build e à execução exatos. |
+| NFR-TEST-001 | Testabilidade | Limites externos, tempo, retry e comportamento de falha devem ser controláveis por interfaces/fakes seguros em testes automatizados. |
+| NFR-TEST-002 | Testabilidade | Todo requisito Must ou Conditional Must aplicável deve ter cobertura de verificação documentada antes da aprovação de sua release-alvo. |
+| NFR-DATA-001 | Integridade de dados | Invariantes transacionais devem ser aplicados nas camadas apropriadas da aplicação e do banco; atualizações concorrentes não podem perder dados silenciosamente. |
+| NFR-DATA-002 | Qualidade de dados | A ingestão de evidências deve validar schema, fonte, timestamps e identidade de release/build e deve tornar evidências ausentes ou desatualizadas visíveis. |
+| NFR-ACC-001 | Acessibilidade | Interfaces de usuário devem buscar WCAG 2.2 AA nos fluxos críticos suportados, incluindo acesso por teclado, foco visível, nomes/roles e contraste. |
+| NFR-COMP-001 | Compatibilidade | APIs e eventos devem usar versões explícitas e regras de compatibilidade documentadas; mudanças incompatíveis exigem planejamento de migração. |
+| NFR-MAINT-001 | Manutenibilidade | Dependências entre módulos devem seguir [ARCHITECTURE.md](ARCHITECTURE.md); novo acoplamento entre módulos ou infraestrutura exige revisão e, quando significativo, um ADR. |
+| NFR-PORT-001 | Portabilidade | Quando componentes executáveis existirem, um contribuidor deve conseguir iniciar dependências locais exigidas por meio de um fluxo documentado e reproduzível. |
+| NFR-PRIV-001 | Privacidade | A coleta de dados pessoais e diagnósticos deve ser minimizada e governada por políticas documentadas de retenção e exclusão antes do uso em produção. |
 
-## Business rules
+## Regras de negócio
 
-| ID | Rule |
+| ID | Regra |
 | --- | --- |
-| BR-AUTH-001 | Deny by default: absence of an explicit permission means the action is forbidden. |
-| BR-AUTH-002 | Deactivated users cannot initiate new sessions or use revoked sessions. |
-| BR-AUTH-003 | Before Phase 03 provides real authentication/RBAC, catalog mutation endpoints are a local-development preview only, must not be externally exposed and cannot satisfy authorization acceptance criteria. |
-| BR-CAT-001 | SKU comparison uses one documented normalization rule and is unique across active and inactive products unless an ADR changes reuse policy. |
-| BR-CAT-002 | Price is non-negative, uses an explicit ISO 4217 currency and fixed decimal semantics; floating-point arithmetic is forbidden for persisted money. |
-| BR-CAT-003 | Stock is an integer greater than or equal to zero; any future reservation model requires separate rules. |
-| BR-CAT-004 | Product deletion is logical for the initial scope so required history, audit and release evidence remain referentially meaningful. |
-| BR-MED-001 | File extension or client-supplied MIME type alone is never sufficient validation. |
-| BR-INT-001 | At-least-once delivery is assumed; consumers must be idempotent. Exactly-once claims are not made across system boundaries. |
-| BR-INT-002 | Retry is permitted only for classified transient failures; validation and authorization failures are not made successful through retry. |
-| BR-QLT-001 | A Quality Score never cancels or reduces an active hard blocking rule. |
-| BR-QLT-002 | Critical security findings, critical test failures and performance error rate beyond the approved critical threshold block release. |
-| BR-QLT-003 | Missing required evidence is not a pass; policy determines whether it yields insufficient evidence or a block. |
-| BR-QLT-004 | Only an authorized human records the final release decision; automation produces a recommendation. |
-| BR-QLT-005 | Exceptions are explicit, justified, time-bounded, attributable and cannot silently alter historical evidence. |
-| BR-QLT-006 | When a calibrated policy version defines a block threshold, a Quality Score below it produces `BLOCK`; no numerical threshold is fixed during foundation, and a high score never cancels a hard blocker. |
-| BR-FLT-001 | Fault injection is disabled in production and defaults to off everywhere. |
-| BR-TEST-001 | A failing test is investigated; it is never deleted, skipped or weakened solely to obtain a green pipeline. |
-| BR-AUD-001 | Durable audit acceptance is fail-closed for privileged user/role changes, quality policy/gate changes, final release decisions/exceptions, terminal-message replay and Fault Lab activation/change. Emergency stop and other containment actions must proceed during audit degradation and raise a critical alert. |
+| BR-AUTH-001 | Negar por padrão: a ausência de permissão explícita significa que a ação é proibida. |
+| BR-AUTH-002 | Usuários desativados não podem iniciar novas sessões nem usar sessões revogadas. |
+| BR-AUTH-003 | Antes que a Fase 03 forneça autenticação/RBAC reais, endpoints de mutação do catálogo são apenas uma prévia de desenvolvimento local, não devem ser expostos externamente e não podem satisfazer critérios de aceite de autorização. |
+| BR-CAT-001 | A comparação de SKU usa uma regra de normalização documentada e é única entre produtos ativos e inativos, salvo se um ADR alterar a política de reutilização. |
+| BR-CAT-002 | O preço é não negativo, usa moeda ISO 4217 explícita e semântica decimal fixa; aritmética de ponto flutuante é proibida para dinheiro persistido. |
+| BR-CAT-003 | O estoque é um inteiro maior ou igual a zero; qualquer modelo futuro de reserva exige regras separadas. |
+| BR-CAT-004 | A exclusão de produto é lógica no escopo inicial para que histórico, auditoria e evidências de release permaneçam referencialmente significativos. |
+| BR-MED-001 | Extensão de arquivo ou MIME type informado pelo cliente nunca é validação suficiente isoladamente. |
+| BR-INT-001 | Presume-se entrega at-least-once; consumidores devem ser idempotentes. Não se alega exactly once entre limites do sistema. |
+| BR-INT-002 | Retry é permitido somente para falhas classificadas como transitórias; falhas de validação e autorização não se tornam bem-sucedidas por retry. |
+| BR-QLT-001 | Uma Pontuação de Qualidade nunca cancela nem reduz uma regra ativa de bloqueio crítico. |
+| BR-QLT-002 | Achados críticos de segurança, falhas críticas de teste e taxa de erro de performance acima do limite crítico aprovado bloqueiam a release. |
+| BR-QLT-003 | Evidência obrigatória ausente não é aprovação; a política determina se gera evidência insuficiente ou bloqueio. |
+| BR-QLT-004 | Somente uma pessoa autorizada registra a decisão final de release; a automação produz uma recomendação. |
+| BR-QLT-005 | Exceções são explícitas, justificadas, com prazo, atribuíveis e não podem alterar silenciosamente evidências históricas. |
+| BR-QLT-006 | Quando uma versão calibrada da política define um limite de bloqueio, Pontuação de Qualidade abaixo dele produz BLOCK; nenhum limite numérico é fixado durante a fundação e uma pontuação alta nunca cancela um bloqueio crítico. |
+| BR-FLT-001 | A injeção de falhas é desabilitada em produção e fica desligada por padrão em todos os ambientes. |
+| BR-TEST-001 | Um teste com falha é investigado; nunca é excluído, ignorado ou enfraquecido somente para obter um pipeline verde. |
+| BR-AUD-001 | Aceitação durável de auditoria opera em fail-closed para alterações privilegiadas de usuário/role, alterações em políticas/gates de qualidade, decisões finais de release/exceções, replay de mensagens terminais e ativação/alteração do Laboratório de Falhas. Parada de emergência e outras ações de contenção devem prosseguir durante degradação da auditoria e gerar alerta crítico. |
 
-## Cross-domain acceptance criteria
+## Critérios de aceite entre domínios
 
-A capability is acceptable only when all applicable conditions hold:
+Uma capacidade é aceitável somente quando todas as condições aplicáveis forem atendidas:
 
-1. The intended behavior and boundaries trace to one or more stable requirements.
-2. Authentication, authorization, input validation and abuse cases have been considered.
-3. State changes are atomic or expose a deliberate, recoverable intermediate state.
-4. Relevant business and security actions are auditable.
-5. Failures use stable, safe error contracts and do not expose secrets or internals.
-6. Tests exist at the lowest effective layers plus scenario coverage where cross-boundary confidence is needed.
-7. Required logs, metrics, traces and correlation context support diagnosis.
-8. API/event/data compatibility and migration effects have been evaluated.
-9. Documentation and traceability links reflect implemented behavior.
-10. Applicable quality gates pass, or an authorized exception is recorded under policy. `NOT_APPLICABLE` requires a reason, authorized actor, exact policy version and audit record.
+1. O comportamento e os limites pretendidos são rastreáveis a um ou mais requisitos estáveis.
+2. Autenticação, autorização, validação de entrada e casos de abuso foram considerados.
+3. Alterações de estado são atômicas ou expõem um estado intermediário deliberado e recuperável.
+4. Ações relevantes de negócio e segurança são auditáveis.
+5. Falhas usam contratos de erro estáveis e seguros e não expõem secrets ou detalhes internos.
+6. Existem testes nas camadas eficazes mais baixas, além de cobertura de cenário quando a confiança entre limites é necessária.
+7. Logs, métricas, traces e contexto de correlação exigidos apoiam o diagnóstico.
+8. Compatibilidade e efeitos de migração de APIs/eventos/dados foram avaliados.
+9. Documentação e links de rastreabilidade refletem o comportamento implementado.
+10. Gates de Qualidade aplicáveis passam ou uma exceção autorizada é registrada conforme a política. NOT_APPLICABLE exige motivo, ator autorizado, versão exata da política e registro de auditoria.
 
-## Open requirement questions
+## Questões de requisitos em aberto
 
-- Which identity mechanism and token/session model best fit local demonstration and future deployment?
-- Can a SKU ever be reused after product deactivation, and what downstream consequences would that have?
-- Which currencies and locale rules belong in v1.0?
-- What evidence storage duration and personal-data retention are required?
-- What reference dataset and hardware profile will make performance thresholds reproducible?
-- Which source systems are authoritative for defects and requirements in the portfolio version?
-- What roles may approve a release exception, and which hard blocks are never overridable?
+- Qual mecanismo de identidade e modelo de token/sessão melhor atendem à demonstração local e ao futuro deploy?
+- Um SKU pode ser reutilizado após a desativação do produto e quais seriam as consequências downstream?
+- Quais moedas e regras de localidade pertencem à v1.0?
+- Que duração de armazenamento de evidências e retenção de dados pessoais são necessárias?
+- Qual dataset de referência e perfil de hardware tornarão os limites de performance reproduzíveis?
+- Quais sistemas de origem são autoridades para defeitos e requisitos na versão de portfólio?
+- Quais roles podem aprovar uma exceção de release e quais bloqueios críticos nunca podem ser substituídos?

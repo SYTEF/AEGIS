@@ -1,97 +1,99 @@
 # AEGIS — Commerce Quality Engineering Platform
 
 > Quality isn't the final step. It's part of the architecture.
+>
+> Qualidade não é a etapa final. Ela faz parte da arquitetura.
 
-AEGIS is a portfolio-grade product built to demonstrate professional Quality Engineering across the architecture and delivery lifecycle of a real application. It is not a test automation framework: it combines a commerce product with a quality and release intelligence product.
+AEGIS é uma plataforma de nível profissional para portfólio, criada para demonstrar Engenharia de Qualidade em toda a arquitetura e no ciclo de entrega de uma aplicação real. Não é um framework de automação de testes: combina um produto de comércio com um produto de qualidade e inteligência de releases.
 
-## Product domains
+## Domínios do produto
 
 ### AEGIS Commerce
 
-A product catalog management system designed to evolve through authentication, authorization, products, categories, SKU, pricing, inventory, media, history, audit, search, integrations, events, retry and idempotency.
+Um sistema de gerenciamento de catálogo de produtos projetado para evoluir com autenticação, autorização, produtos, categorias, SKU, preços, estoque, mídia, histórico, auditoria, busca, integrações, eventos, retry e idempotência.
 
-### AEGIS Quality Control Center
+### Centro de Controle de Qualidade do AEGIS (AEGIS Quality Control Center)
 
-A control plane for releases, test executions, defects, security findings, performance results, quality metrics, risk and release decisions. A future Quality Engine will combine a transparent quality score with non-negotiable hard gates.
+Um centro de controle para releases, execuções de testes, defeitos, achados de segurança, resultados de performance, métricas de qualidade, risco e decisões de release. Um futuro Motor de Qualidade (Quality Engine) combinará uma Pontuação de Qualidade transparente com gates críticos inegociáveis.
 
-## Why AEGIS exists
+## Por que o AEGIS existe
 
-AEGIS demonstrates that quality is a system property. Testability, security, observability, resilience and traceability are architectural concerns, not activities deferred until delivery. The intended professional audience includes QA Engineers, Quality Engineers, SDETs, Test Automation Engineers and Software Engineers in Test.
+O AEGIS demonstra que qualidade é uma propriedade do sistema. Testabilidade, segurança, observabilidade, resiliência e rastreabilidade são preocupações arquiteturais, não atividades adiadas até a entrega. O público profissional pretendido inclui profissionais nas funções de QA Engineer, Quality Engineer, SDET, Test Automation Engineer e Software Engineer in Test.
 
-## Architecture direction
+## Direção arquitetural
 
-AEGIS starts as a **modular monolith**, formally accepted in [ADR-001](docs/ADR/ADR-001-modular-monolith.md), with clear boundaries:
+O AEGIS começa como um **Monólito Modular (Modular Monolith)**, formalmente aceito no [ADR-001](docs/ADR/ADR-001-modular-monolith.md), com limites claros:
 
-- `auth`: identity, authentication and RBAC;
-- `catalog`: products, categories, SKU, price and inventory;
-- `media`: secure image intake and processing;
-- `integration`: reliable communication with the External Sales Center Mock;
-- `quality`: releases, test evidence, metrics, gates, risk and recommendations;
-- `audit`: immutable records of security- and business-relevant actions.
+- `auth`: identidade, autenticação e RBAC;
+- `catalog`: produtos, categorias, SKU, preço e estoque;
+- `media`: recebimento e processamento seguro de imagens;
+- `integration`: comunicação confiável com o Mock do Centro de Vendas Externo;
+- `quality`: releases, evidências de teste, métricas, gates, risco e recomendações;
+- `audit`: registros imutáveis de ações relevantes para segurança e negócio.
 
-Preferred future technologies are React and TypeScript, Java and Spring Boot, PostgreSQL, RabbitMQ, MinIO, Playwright, k6, Docker Compose, GitHub Actions, OpenTelemetry, Prometheus and Grafana. They are not implemented by this foundation and remain subject to Architecture Decision Records (ADRs).
+As tecnologias futuras preferenciais são React e TypeScript, Java e Spring Boot, PostgreSQL, RabbitMQ, MinIO, Playwright, k6, Docker Compose, GitHub Actions, OpenTelemetry, Prometheus e Grafana. Elas não são implementadas por esta fundação e continuam sujeitas a Registros de Decisão Arquitetural (Architecture Decision Records — ADRs).
 
-The approved **planning baseline** for the future Phase 01 is JDK 25 LTS, Spring Boot 4.1.x, Maven, executable Jar, Maven coordinates `io.github.sytef:aegis` and base package `io.github.sytef.aegis`. GitHub Actions will begin with `permissions: contents: read`. These decisions do not mean Phase 01 has been implemented or authorized to start.
+A **baseline de planejamento** aprovada para a futura Fase 01 é JDK 25 LTS, Spring Boot 4.1.x, Maven, Jar executável, coordenadas Maven `io.github.sytef:aegis` e pacote-base `io.github.sytef.aegis`. O GitHub Actions começará com `permissions: contents: read`. Essas decisões não significam que a Fase 01 foi implementada nem autorizada a começar.
 
-Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch and microservices are explicitly excluded unless a measured problem justifies them.
+Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch e microservices estão explicitamente excluídos, a menos que um problema mensurável os justifique.
 
-## Repository status
+## Estado do repositório
 
-This repository is currently in **v0.1 Foundation**. It contains the official product and engineering documentation only. There is no frontend, backend, database, executable test suite or infrastructure yet.
+Este repositório está atualmente na **v0.1 — Fundação**. Ele contém apenas a documentação oficial de produto e engenharia. Ainda não há frontend, backend, banco de dados, suíte de testes executável ou infraestrutura.
 
-## Documentation map
+## Mapa da documentação
 
-| Document | Purpose |
+| Documento | Finalidade |
 | --- | --- |
-| [Project](docs/PROJECT.md) | Vision, users, scope and success criteria |
-| [Requirements](docs/REQUIREMENTS.md) | Functional and non-functional requirements, rules and acceptance criteria |
-| [Architecture](docs/ARCHITECTURE.md) | System boundaries, modules, flows and failure scenarios |
-| [Data model](docs/DATA_MODEL.md) | Conceptual entities, ownership and relationships |
-| [API specification](docs/API_SPEC.md) | Initial conceptual HTTP contracts |
-| [Test strategy](docs/TEST_STRATEGY.md) | Quality Engineering strategy and test levels |
-| [Security](docs/SECURITY.md) | Security principles and initial threat model |
-| [Quality gates](docs/QUALITY_GATES.md) | Progressive gates, scoring, risk and hard blocks |
-| [Observability](docs/OBSERVABILITY.md) | Logs, metrics, traces and failure investigation |
-| [Roadmap](docs/ROADMAP.md) | Incremental, revisable product evolution |
-| [Execution plans](PLANS.md) | Phase objectives, scope and definitions of done |
-| [Agent constitution](AGENTS.md) | Operational rules for contributors and agents |
-| [ADRs](docs/ADR/README.md) | Architecture decision process and index |
-| [Glossary](docs/GLOSSARY.md) | Shared meaning of release, candidate, build, evidence, gate, risk and decision |
+| [Projeto](docs/PROJECT.md) | Visão, usuários, escopo e critérios de sucesso |
+| [Requisitos](docs/REQUIREMENTS.md) | Requisitos funcionais e não funcionais, regras e critérios de aceite |
+| [Arquitetura](docs/ARCHITECTURE.md) | Limites do sistema, módulos, fluxos e cenários de falha |
+| [Modelo de dados](docs/DATA_MODEL.md) | Entidades conceituais, responsabilidades e relações |
+| [Especificação da API](docs/API_SPEC.md) | Contratos HTTP conceituais iniciais |
+| [Estratégia de testes](docs/TEST_STRATEGY.md) | Estratégia de Engenharia de Qualidade e níveis de teste |
+| [Segurança](docs/SECURITY.md) | Princípios de segurança e modelo de ameaças inicial |
+| [Gates de Qualidade](docs/QUALITY_GATES.md) | Gates progressivos, pontuação, risco e bloqueios críticos |
+| [Observabilidade](docs/OBSERVABILITY.md) | Logs, métricas, traces e investigação de falhas |
+| [Roadmap](docs/ROADMAP.md) | Evolução incremental e revisável do produto |
+| [Planos de execução](PLANS.md) | Objetivos, escopo e definições de pronto das fases |
+| [Constituição dos agentes](AGENTS.md) | Regras operacionais para contribuidores e agentes |
+| [ADRs](docs/ADR/README.md) | Processo e índice de decisões arquiteturais |
+| [Glossário](docs/GLOSSARY.md) | Significado compartilhado de release, candidato, build, evidência, gate, risco e decisão |
 
-## Core quality policies
+## Políticas centrais de qualidade
 
-- Every material requirement must be traceable to tests, executions, evidence, defects and releases where applicable.
-- A quality score informs decisions but never overrides a critical hard gate.
-- Tests must not be deleted, skipped or weakened merely to obtain a green pipeline.
-- A test must never be changed only to make it pass; first determine whether the defect is in the product, test, data, environment or requirement.
-- Failures must be diagnosable through useful evidence and observability.
-- Important and difficult-to-reverse decisions must be recorded as ADRs.
+- Todo requisito material deve ser rastreável a testes, execuções, evidências, defeitos e releases quando aplicável.
+- Uma Pontuação de Qualidade informa decisões, mas nunca sobrepõe um gate crítico.
+- Testes não devem ser excluídos, ignorados ou enfraquecidos apenas para obter um pipeline verde.
+- Um teste nunca deve ser alterado somente para passar; primeiro deve-se determinar se o defeito está no produto, teste, dado, ambiente ou requisito.
+- Falhas devem ser diagnosticáveis por meio de evidências úteis e observabilidade.
+- Decisões importantes e difíceis de reverter devem ser registradas em ADRs.
 
-## Conceptual traceability
+## Rastreabilidade conceitual
 
 ```text
-Requirement -> Test Case -> Test Execution -> Evidence -> Defect -> Release
+Requisito -> Caso de Teste -> Execução de Teste -> Evidência -> Defeito -> Release
 ```
 
-Identifiers are stable and human-readable, for example `REQ-CAT-001`, `TC-API-CAT-001`, `DEF-001` and release `v1.0.0`.
+Os identificadores são estáveis e legíveis por humanos, por exemplo `REQ-CAT-001`, `TC-API-CAT-001`, `DEF-001` e a release `v1.0.0`.
 
-## Current constraints
+## Restrições atuais
 
-- Documentation is authoritative for the foundation, but implementation details may evolve through ADRs.
-- Threshold values in quality, security and performance policies are initial proposals and must be calibrated with evidence.
-- Local execution instructions will be added when executable components first exist.
+- A documentação é a autoridade para a fundação, mas detalhes de implementação podem evoluir por meio de ADRs.
+- Os valores-limite nas políticas de qualidade, segurança e performance são propostas iniciais e devem ser calibrados com evidências.
+- As instruções de execução local serão adicionadas quando os primeiros componentes executáveis existirem.
 
-## Delivery targets
+## Metas de entrega
 
-- **MPR — Minimum Portfolio Release:** proves the secure catalog, reproducible engineering path, layered quality evidence, traceability and hard gates without requiring every advanced differentiator.
-- **v1.0 Full Vision:** retains Release Intelligence, validated Quality Score/risk/recommendation, Fault Lab and the complete planned observability demonstration.
+- **MPR — Release Mínima de Portfólio (Minimum Portfolio Release):** comprova o catálogo seguro, o caminho de engenharia reproduzível, evidências de qualidade em camadas, rastreabilidade e gates críticos sem exigir todos os diferenciais avançados.
+- **v1.0 — Visão Completa:** preserva a Inteligência de Release, a Pontuação de Qualidade/risco/recomendação validados, o Laboratório de Falhas e a demonstração completa de observabilidade planejada.
 
-The MPR prevents advanced features from making the portfolio impossible to finish; it does not lower applicable quality or security gates. See the [roadmap](docs/ROADMAP.md#mpr--minimum-portfolio-release).
+A MPR impede que funcionalidades avançadas tornem o portfólio impossível de concluir; ela não reduz os gates aplicáveis de qualidade ou segurança. Consulte o [roadmap](docs/ROADMAP.md#mpr--release-mínima-de-portfólio).
 
-## Contributing
+## Contribuição
 
-Before changing the project, read [AGENTS.md](AGENTS.md), the relevant requirements and architecture sections, and the applicable phase in [PLANS.md](PLANS.md). Do not implement a roadmap phase without explicit human approval.
+Antes de alterar o projeto, leia [AGENTS.md](AGENTS.md), os requisitos e as seções de arquitetura relevantes, além da fase aplicável em [PLANS.md](PLANS.md). Não implemente uma fase do roadmap sem aprovação humana explícita.
 
-## License
+## Licença
 
-No license has been selected. Until one is added, no reuse rights are granted by default.
+Nenhuma licença foi selecionada. Até que uma seja adicionada, nenhum direito de reutilização é concedido por padrão.
