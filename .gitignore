@@ -1,0 +1,87 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Operating system and editors
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# Java / JVM
+.gradle/
+build/
+out/
+target/
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+.factorypath
+.classpath
+.project
+.settings/
+
+# Node / frontend
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+dist/
+coverage/
+*.tsbuildinfo
+.eslintcache
+.vite/
+
+# Test and quality artifacts
+test-results/
+playwright-report/
+blob-report/
+k6-results/
+allure-results/
+allure-report/
+reports/
+screenshots/
+videos/
+*.lcov
+
+# Runtime and observability data
+/.runtime/
+/logs/
+*.log
+*.pid
+/tmp/
+/temp/
+/otel-data/
+/prometheus-data/
+/grafana-data/
+/minio-data/
+/rabbitmq-data/
+/postgres-data/
+
+# Tool caches
+.cache/
+.scannerwork/
+.sonar/
+.nyc_output/
+
+# Local overrides
+docker-compose.override.yml
+compose.override.yml
+application-local.yml
+application-local.yaml
+application-local.properties
+
+# Keep source and documentation fixtures explicitly committed as needed.

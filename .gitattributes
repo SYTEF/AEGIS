@@ -1,0 +1,28 @@
+# Normalize repository text to LF for reproducible cross-platform diffs.
+* text=auto eol=lf
+
+# Windows command files require CRLF for native compatibility.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Explicit script and document policies.
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.java text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# Binary assets must never receive line-ending conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.jar binary
