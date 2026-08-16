@@ -2,7 +2,7 @@
 
 ## Estado e contexto
 
-Este documento define a arquitetura inicial e distingue a fundação já executável das capacidades futuras. A Fase 01 implementa somente o bootstrap HTTP do backend, endpoints operacionais, tratamento seguro de erros, correlação, logging estruturado, testes e CI. Os módulos de negócio, frontend e componentes externos permanecem conceituais. A direção de Monólito Modular (Modular Monolith) está aceita no [ADR-001](ADR/ADR-001-modular-monolith.md). Alterações materiais exigem análise de impacto e, quando difíceis de reverter ou amplamente consequentes, um [Registro de Decisão Arquitetural](ADR/README.md).
+Este documento define a arquitetura inicial e distingue a fundação já executável das capacidades futuras. A Fase 01 implementa o bootstrap HTTP do backend, endpoints operacionais, tratamento seguro de erros, correlação, logging estruturado, testes e CI. A arquitetura da Fase 02 está aprovada e documentada, mas Catalog, PostgreSQL e frontend ainda não estão implementados. A direção de Monólito Modular está aceita no [ADR-001](ADR/ADR-001-modular-monolith.md), com decisões complementares nos [ADRs](ADR/README.md).
 
 O AEGIS deve oferecer suporte a um fluxo real de catálogo e a um fluxo de qualidade/release, mantendo-se compreensível e reproduzível localmente. O principal risco arquitetural é adicionar complexidade de sistemas distribuídos pela aparência no portfólio, em vez de atender a uma necessidade do produto. O estilo inicial é, portanto, um **Monólito Modular**, com mensageria assíncrona apenas em limites que se beneficiem de desacoplamento e recuperação.
 
@@ -52,10 +52,10 @@ O worker de integração pode inicialmente compartilhar a mesma base de código 
 
 | Contêiner | Responsabilidade | Direção inicial |
 | --- | --- | --- |
-| Aplicação Web | Fluxos acessíveis para Commerce e Centro de Controle de Qualidade | React + TypeScript, após aprovação da fundação |
+| Aplicação Web | Fluxos acessíveis para Commerce e Centro de Controle de Qualidade | SPA React + TypeScript; primeira experiência Product aprovada para a Fase 02 pelo ADR-010 |
 | Aplicação/API | Contratos HTTP, composição de consultas, lógica de negócio modular e ingestão | Java + Spring Boot, Monólito Modular |
 | Worker de integração | Consumir trabalho de saída, chamar o mock downstream, repetir e informar status | Mesma base de código do backend, com perfil de runtime separado se útil |
-| PostgreSQL | Fonte da verdade transacional, constraints, histórico, metadados de auditoria e outbox | Um banco lógico com schemas/tabelas pertencentes aos módulos |
+| PostgreSQL 18.4 | Fonte da verdade transacional, constraints, histórico, metadados de auditoria e outbox | Um banco lógico com schemas/tabelas pertencentes aos módulos |
 | RabbitMQ | Entrega assíncrona durável nos limites de integração/mídia | Adicionado somente em sua fase do roadmap |
 | MinIO | Imagens de produtos e futuras evidências em objetos quando apropriado | Referências e checksums mantidos no PostgreSQL |
 | Mock do Centro de Vendas Externo | Comportamentos controlados de contrato, latência e falha | Nunca tratado como confiável/interno |
@@ -69,7 +69,7 @@ O worker de integração pode inicialmente compartilhar a mesma base de código 
 
 ### catalog
 
-É responsável por produtos, categorias, SKU, preço, estoque, estado do produto, histórico do produto e intenção transacional durável de eventos de domínio do catálogo. Uma transação do catálogo pode persistir atomicamente o agregado, histórico e sua intenção de outbox. Catálogo não depende de Mídia nem realiza chamadas HTTP downstream dentro de transações do catálogo.
+É responsável por Products, Categories, SKU, preço, estoque, estado do Product, histórico e intenção transacional durável de eventos de domínio. Na Fase 02, Product é a raiz do agregado, possui exatamente uma Category obrigatória, SKU imutável, dinheiro BRL e ciclo ACTIVE/INACTIVE sem reativação. Category nasce ACTIVE, usa nome normalizado para display e chave canônica case-insensitive, não possui reativação e não recebe novas associações quando INACTIVE. Uma Category com qualquer Product ACTIVE não pode ser desativada; a operação é permitida se houver somente Products INACTIVE. Corridas com criação/mudança de Product devem preservar essa invariável, enquanto a estratégia física de locking será definida e testada na implementação. Uma transação persiste atomicamente agregado, histórico e intenção de outbox. Catálogo não depende de Mídia nem realiza chamadas downstream dentro de suas transações.
 
 ### media
 
@@ -170,6 +170,8 @@ sequenceDiagram
 
 A resposta do catálogo não afirma que a sincronização externa ou sua projeção de auditoria foi concluída. Catálogo é responsável pela intenção e sua persistência; Integração é responsável por publicação e entrega. A outbox fecha a lacuna de escrita dupla entre banco e broker. A reivindicação pelo publicador e a idempotência do consumidor devem tolerar reinício e entrega duplicada.
 
+Na Fase 02, o fluxo termina após a confirmação de Product, histórico e outbox intent no PostgreSQL. Publicador, RabbitMQ, worker, entrega externa, retry e status de integração permanecem apenas como arquitetura futura da Fase de Integração; nenhum desses componentes é iniciado ou simulado para a prévia do Catálogo.
+
 ## Garantias de atomicidade e consistência
 
 | Preocupação | Garantia | Limite |
@@ -216,7 +218,7 @@ A ingestão é idempotente por fonte e identidade de execução. Evidências aus
 - JSON sobre HTTPS fora do desenvolvimento local.
 - Prefixo de caminho versionado (/api/v1) para contratos públicos conceituais.
 - Formato de erro estável com código de máquina, mensagem segura, detalhes de campos, ID de correlação e timestamp.
-- Concorrência otimista para atualizações materiais, inicialmente por uma decisão futura entre campo de versão ou ETag/If-Match.
+- Concorrência otimista para recursos mutáveis do Catálogo por ETag/If-Match e versão no banco conforme o [ADR-007](ADR/ADR-007-etag-if-match-optimistic-concurrency.md).
 - Paginação limitada e ordenação determinística.
 - Chaves de idempotência para operações de criação/comando elegíveis a retry.
 
@@ -235,15 +237,16 @@ Schemas incompatíveis usam uma nova versão com janela de compatibilidade/migra
 
 ## Limites de persistência e consistência
 
-- PostgreSQL é a fonte da verdade para estado transacional.
-- Cada módulo é responsável por suas tabelas e migrações, mesmo em um único banco.
+- PostgreSQL 18.4 é a fonte da verdade para estado transacional conforme o [ADR-002](ADR/ADR-002-postgresql.md).
+- O Catálogo é responsável pelo schema `catalog` e por suas migrations Flyway; módulos futuros continuam responsáveis por seus próprios limites de persistência.
 - Uma transação do Catálogo atualiza atomicamente agregado, histórico de produto e intenção de outbox pertencente ao Catálogo. Auditoria é acessada somente pelo limite explícito sob a garantia descrita acima.
 - Fluxos entre módulos ou externos usam consistência eventual com status explícito.
-- Dinheiro usa precisão fixa e moeda; timestamps são armazenados como instantes UTC; IDs são opacos e estáveis.
+- Na Fase 02, dinheiro usa BRL, escala 2 e `NUMERIC(19,2)`; timestamps são instantes UTC e IDs são opacos/estáveis.
 - Concorrência otimista evita perda silenciosa de atualizações em registros mutáveis de catálogo e política.
+- A consistência entre Product e Category impede que uma corrida confirme Product ACTIVE associado a Category INACTIVE; o mecanismo físico de locking não é antecipado pela documentação.
 - Objetos binários ficam no MinIO; o banco armazena metadados, checksum e chave opaca do objeto.
 
-Consulte [DATA_MODEL.md](DATA_MODEL.md) para entidades conceituais. Schema físico e ferramentas de migração exigem um ADR ou decisão no plano de implementação.
+Consulte [DATA_MODEL.md](DATA_MODEL.md) para entidades conceituais. PostgreSQL 18.4, schema `catalog`, Flyway, Docker Compose local, Testcontainers e ausência de H2 estão decididos no ADR-002; migrations materializarão o design físico durante a implementação autorizada. A imagem Docker oficial terá seu digest resolvido e fixado quando o Compose for criado.
 
 ## Limites de integração
 
@@ -272,6 +275,7 @@ O mock deve simular resultados realistas, mas não pode sustentar alegações de
 | Latência/indisponibilidade do banco | Solicitações atingem timeout dentro do orçamento, falham sem estado parcial e expõem degradação da dependência | pool, latência de consulta, contagem de timeouts e traces sem dados SQL brutos |
 | HTTP 500 aleatório da API | Resposta de erro estável e segura; correlação permite investigação | código do erro, classificação da exceção, trace e métrica da solicitação |
 | Atualização concorrente obsoleta | Atualização rejeitada como conflito, estado mais novo preservado | ID/versão do produto e métrica de conflito |
+| Associação de Product concorrente com desativação de Category | Uma das operações é rejeitada/reavaliada; nunca se confirma Product ACTIVE associado a Category INACTIVE | IDs/versões seguros dos recursos, correlation ID e resultado do conflito |
 | Evidência de qualidade inválida | Payload rejeitado/colocado em quarentena; avaliação existente da release permanece inalterada | fonte, erro de schema, ID de ingestão e métrica de rejeição |
 | Fonte de qualidade ausente/desatualizada | Resumo da qualidade mostra evidência insuficiente/desatualizada; política pode bloquear | atualização da fonte, timestamps esperado/recebido e motivo do gate |
 | Erro do Motor de Qualidade | Nenhuma pontuação fabricada; última avaliação claramente marcada como desatualizada ou indisponível | versão da fórmula, ID do conjunto de entradas, erro de cálculo e alerta |
@@ -288,11 +292,11 @@ O mock deve simular resultados realistas, mas não pode sustentar alegações de
 
 ## Direção de deploy e execução local
 
-O runtime mínimo da Fase 01 é um Jar executável Spring Boot, restrito por padrão a 127.0.0.1:8080 e reproduzível pelo Maven Wrapper. A evolução pretendida para desenvolvimento é:
+O runtime mínimo atual é um Jar executável Spring Boot, restrito por padrão a 127.0.0.1:8080 e reproduzível pelo Maven Wrapper. Para a Fase 02, a evolução aprovada é:
 
-- backend executável diretamente; o frontend só será adicionado em fase autorizada;
-- PostgreSQL e, somente em suas fases, RabbitMQ e MinIO fornecidos por Docker Compose;
-- um comando/caminho de bootstrap documentado, health checks e dados seed determinísticos;
+- backend executável diretamente e SPA React/TypeScript em dev server ligado a loopback, com proxy local para `/api` conforme o [ADR-010](ADR/ADR-010-frontend-architecture.md);
+- PostgreSQL fornecido por Docker Compose; RabbitMQ e MinIO somente em suas fases;
+- um caminho de bootstrap documentado, health checks e seed local opt-in/idempotente;
 - nenhuma exigência de Kubernetes ou conta em nuvem;
 - worker de integração inicializável independentemente quando a integração assíncrona existir.
 
@@ -314,6 +318,20 @@ A Fase 01 está limitada a um esqueleto de aplicação executável, liveness/rea
 
 O código físico da fundação usa o pacote-base `io.github.sytef.aegis`: `foundation.correlation` contém a política pura de ID de correlação; `foundation.web` integra essa política ao HTTP, ao MDC e aos Problem Details e centraliza a representação segura de paths; `foundation.info` contribui somente metadados permitidos ao Actuator. Uma regra ArchUnit impede que `foundation.correlation` dependa de Spring, Jakarta ou `foundation.web`; a direção inversa é permitida. Nenhum pacote de domínio vazio foi criado.
 
+### Arquitetura aprovada e ainda não implementada da Fase 02
+
+| Preocupação | Decisão |
+| --- | --- |
+| Persistência | PostgreSQL 18.4, schema `catalog`, Flyway, Compose local e Testcontainers; sem H2; digest oficial fixado quando o Compose for criado |
+| Domínio | Product aggregate root, uma Category obrigatória e ACTIVE para nova associação, lifecycle de Category definido, histórico e outbox intent atômicos |
+| Concorrência | ETag/If-Match no HTTP e optimistic locking no banco |
+| Contrato | OpenAPI versionado, drift validado e tipos TypeScript gerados sem SDK runtime |
+| Frontend | SPA React/TypeScript/Vite organizada por feature Catalog/Product |
+| UI | light-first, tokens para tema futuro, Design Quality Gate obrigatório |
+| Segurança | Local Development Preview em loopback, sem Auth/RBAC fictícios e fail-safe contra exposição pública mutável |
+| Observabilidade | reutilizar structured logging, correlation ID, Problem Details e health; sem Prometheus/Grafana/OpenTelemetry |
+| Assíncrono | somente outbox intent durável; nenhum broker, publicador ou worker |
+
 ## Regras de evolução
 
 Um módulo só pode ser considerado para extração se evidências mostrarem uma necessidade como escala independente, isolamento, cadência de release, responsabilidade ou limites de confiabilidade que o monólito não consiga atender de forma razoável. Antes da extração, deve-se verificar que responsabilidade, contratos, observabilidade e limites de dados do módulo já são saudáveis. Distribuição não corrige modularidade ruim.
@@ -321,9 +339,6 @@ Um módulo só pode ser considerado para extração se evidências mostrarem uma
 ## Decisões em aberto
 
 - Mecanismo de autenticação/sessão e biblioteca de identidade.
-- Estrutura do futuro frontend e organização física dos módulos de negócio; a fundação do backend e a primeira regra ArchUnit já estão definidas.
-- Representação de concorrência otimista (campo version versus semântica HTTP ETag).
-- Estratégia de schema físico do banco e ferramenta de migração.
 - Política de object storage e retenção de evidências.
 - Topologia RabbitMQ, mecanismo de retry e fluxo de dead-letter/replay.
 - Fórmula de qualidade, pesos, janelas de atualização e autoridade de exceção.

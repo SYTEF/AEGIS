@@ -2,7 +2,7 @@
 
 ## Estado
 
-Os contratos de negócio deste documento permanecem em nível de design e ainda não possuem OpenAPI executável. Somente os contratos operacionais da Fase 01 estão implementados. Detalhes dos demais endpoints podem ser refinados durante sua fase do roadmap, mas alterações devem permanecer alinhadas aos [requisitos](REQUIREMENTS.md), à política de segurança e às regras de compatibilidade. Um documento OpenAPI executável deve tornar-se a fonte do contrato quando a primeira API pública de negócio for implementada.
+Os contratos de negócio deste documento permanecem em nível de design e ainda não possuem OpenAPI executável. Somente os contratos operacionais da Fase 01 estão implementados. As decisões da Fase 02 estão formalizadas, mas nenhum endpoint de negócio foi implementado. Conforme o [ADR-011](ADR/ADR-011-openapi-contract.md), um documento OpenAPI versionado será a fonte executável dos endpoints `/api/v1` quando a implementação começar; este documento continuará registrando contexto, políticas e capacidades futuras.
 
 ## Convenções
 
@@ -13,7 +13,7 @@ Os contratos de negócio deste documento permanecem em nível de design e ainda 
 - Content-type: respostas JSON bem-sucedidas usam application/json; respostas de erro usam application/problem+json; upload usa multipart/form-data controlado ou um design de upload assinado selecionado posteriormente.
 - Timestamps: instantes UTC no padrão ISO 8601, por exemplo 2026-08-16T15:00:00Z.
 - IDs: strings opacas; clientes não devem inferir ordenação ou tipo a partir delas.
-- Dinheiro: { "amount": "19.90", "currency": "BRL" }; valores decimais são serializados como strings para preservar a precisão.
+- Dinheiro: { "amount": "19.90", "currency": "BRL" }; valores decimais são serializados como strings para preservar a precisão. Na Fase 02, somente BRL e escala 2 são aceitos.
 - Campos desconhecidos da solicitação: rejeitados em comandos sensíveis para segurança, salvo se uma política explícita de compatibilidade os permitir.
 - Correlação: para solicitações aceitas pelo conector e que entram na cadeia Servlet/Spring, aceitar um X-Correlation-ID válido ou gerar um e retornar o ID efetivo no header da resposta e no contexto diagnóstico.
 - Versionamento: alterações incompatíveis da API exigem novo caminho/media type principal e aviso de migração; campos opcionais aditivos normalmente são compatíveis.
@@ -65,7 +65,7 @@ As roles mínimas ADMIN, QUALITY_MANAGER, OPERATOR e VIEWER são definidas em [R
 
 ### Metadados de recurso
 
-Recursos mutáveis expõem id, createdAt, updatedAt e version quando relevante. Comandos de atualização fornecem a versão esperada por If-Match ou um campo da solicitação; a fase de implementação deve escolher um padrão consistente.
+Recursos mutáveis expõem id, createdAt, updatedAt e version quando relevante. GET individual e criação retornam ETag; PUT e operações de desativação exigem If-Match conforme o [ADR-007](ADR/ADR-007-etag-if-match-optimistic-concurrency.md). O header é a autoridade da precondição mesmo quando version também aparece no corpo.
 
 ### Resposta de coleção
 
@@ -116,11 +116,12 @@ O media type da resposta é application/problem+json. O formato segue a semânti
 | 401 | Autenticação ausente, expirada ou inválida |
 | 403 | Identidade autenticada, mas sem permissão |
 | 404 | Recurso ausente ou ocultado intencionalmente |
-| 409 | Conflito de unicidade, transição de estado, idempotência ou concorrência |
-| 412 | Precondição If-Match falhou, se a concorrência por ETag for selecionada |
+| 409 | Conflito de unicidade, transição de estado ou idempotência |
+| 412 | Precondição If-Match não corresponde à versão atual do recurso |
 | 413 | Upload/corpo excede o tamanho permitido |
 | 415 | Media type não suportado ou divergente do conteúdo |
 | 422 | Comando sintaticamente válido, mas semanticamente inaceitável, quando diferenciado de 400 |
+| 428 | Precondição If-Match obrigatória ausente |
 | 429 | Limite de taxa excedido; incluir orientação segura de retry |
 | 500 | Erro inesperado do servidor com ID de correlação |
 | 502/503/504 | Falha/indisponibilidade/timeout de dependência quando o contrato síncrono depender dela |
@@ -176,26 +177,33 @@ A coluna de acesso abaixo representa o contrato seguro de destino. Durante a **P
   "price": { "amount": "129.90", "currency": "BRL" },
   "stock": 12,
   "status": "ACTIVE",
-  "categories": [{ "id": "cat_...", "name": "Referência" }],
-  "links": { "images": "/api/v1/products/prd_.../images" },
+  "category": { "id": "cat_...", "name": "Referência", "status": "ACTIVE" },
   "version": 3,
   "createdAt": "2026-08-16T14:00:00Z",
   "updatedAt": "2026-08-16T15:00:00Z"
 }
 ~~~
 
-Esta é a representação de produto pertencente ao Catálogo e não contém metadados pertencentes à Mídia. Um cliente pode seguir o link de imagens, ou uma futura resposta de composição de aplicação/consulta pode combinar modelos de leitura de Catálogo e Mídia acima dos dois módulos. Catálogo nunca chama Mídia para construir esse recurso.
+Esta é a representação de Product pertencente ao Catálogo e não contém metadados nem links pertencentes à Mídia. Uma futura resposta de composição pode combinar modelos de leitura acima dos dois módulos; Catálogo nunca chama Mídia para construir esse recurso.
+
+Regras da Fase 02:
+
+- `sku` é obrigatório, remove whitespace externo, converte para uppercase, corresponde a `^[A-Z0-9._-]{3,64}$`, é imutável e nunca é reutilizado;
+- `name` é obrigatório, passa por Unicode NFC, remoção de whitespace externo e redução de sequências internas de whitespace a um espaço e possui 3–120 caracteres depois dessa normalização;
+- `description` é obrigatória, passa por Unicode NFC, normalização de line endings para LF e remoção somente de whitespace externo, preserva whitespace interno significativo, parágrafos e quebras de linha, não sofre transformação de caixa e possui 1–2000 caracteres depois dessa normalização;
+- `price.currency` deve ser `BRL` e `price.amount` é string decimal não negativa com exatamente duas casas no contrato canônico;
+- `stock` é inteiro maior ou igual a zero;
+- `categoryId` é obrigatório nos comandos de criação/atualização, representa exatamente uma Category e só pode criar uma nova associação quando a Category estiver ACTIVE;
+- Product nasce ACTIVE; reativação não existe.
 
 | Método e endpoint | Finalidade | Acesso | Respostas esperadas |
 | --- | --- | --- | --- |
-| POST /products | Criar um produto | catalog:write | 201; 400, 401, 403, 409 por SKU duplicado |
-| GET /products/{productId} | Obter visão autorizada do produto | catalog:read | 200; 401, 403, 404 |
+| POST /products | Criar um Product | catalog:write | 201 + Location + ETag; 400, 401, 403, 404 para Category ausente, 409 por SKU duplicado ou Category INACTIVE |
+| GET /products/{productId} | Obter visão autorizada do Product | catalog:read | 200 + ETag; 401, 403, 404 |
 | GET /products | Pesquisar/filtrar/paginar produtos | catalog:read | 200; 400, 401, 403 |
-| PUT /products/{productId} | Substituir campos permitidos do produto com verificação de concorrência | catalog:write | 200; 400, 401, 403, 404, DECISÃO EM ABERTO: 409 ou 412 |
-| PATCH /products/{productId} | Atualizar parcialmente campos explicitamente suportados | catalog:write | 200; 400, 401, 403, 404, DECISÃO EM ABERTO: 409 ou 412 |
-| POST /products/{productId}/deactivation | Desativar com motivo explícito | catalog:write | 200; 400, 401, 403, 404, 409 por estado inválido |
+| PUT /products/{productId} | Substituir os campos mutáveis com If-Match; SKU não é alterável | catalog:write | 200 + ETag; 400, 401, 403, 404, 409 para Category INACTIVE, 412, 428 |
+| POST /products/{productId}/deactivation | Desativar com If-Match | catalog:write | 200 + ETag; 401, 403, 404, 412, 428 |
 | GET /products/{productId}/history | Paginar histórico de alterações do produto | catalog:history:read | 200; 400, 401, 403, 404 |
-| GET /products/{productId}/integration-status | Inspecionar sincronização downstream | catalog:read | 200; 401, 403, 404 |
 
 GET /products aceita inicialmente:
 
@@ -204,19 +212,48 @@ GET /products aceita inicialmente:
 - status (ACTIVE, INACTIVE quando autorizado);
 - page, size, sort usando uma allowlist.
 
-A criação aceita Idempotency-Key opcional se a implementação oferecer cache seguro dos resultados do comando. SKU duplicado sempre é conflito, independentemente da chave de idempotência.
+A Fase 02 não implementa Idempotency-Key nem retry automático de mutations. SKU duplicado sempre retorna conflito. PUT sem alteração material e segunda desativação com precondição atual não alteram versão nem produzem histórico/outbox adicional. Um retry com ETag já consumido pode retornar 412, preservando os efeitos idempotentes.
+
+`PATCH /products/{productId}` e `GET /products/{productId}/integration-status` permanecem fora da Fase 02. O primeiro exige necessidade concreta de atualização parcial; o segundo só passa a existir quando houver publicação/entrega de Integração.
 
 ## Contratos de categoria
 
+Representação conceitual:
+
+~~~json
+{
+  "id": "cat_...",
+  "name": "Eletrônicos de consumo",
+  "status": "ACTIVE",
+  "version": 1,
+  "createdAt": "2026-08-16T14:00:00Z",
+  "updatedAt": "2026-08-16T14:00:00Z"
+}
+~~~
+
+O backend mínimo da Fase 02 expõe somente os quatro contratos abaixo sob `/api/v1`:
+
 | Método e endpoint | Finalidade | Acesso | Respostas esperadas |
 | --- | --- | --- | --- |
-| POST /categories | Criar categoria | catalog:write | 201; 400, 401, 403, 409 por nome normalizado/slug duplicado |
-| GET /categories/{categoryId} | Obter categoria | catalog:read | 200; 401, 403, 404 |
-| GET /categories | Pesquisar/paginar categorias | catalog:read | 200; 400, 401, 403 |
-| PUT /categories/{categoryId} | Atualizar categoria com verificação de concorrência | catalog:write | 200; 400, 401, 403, 404, DECISÃO EM ABERTO: 409 ou 412 |
-| POST /categories/{categoryId}/deactivation | Desativar conforme política do catálogo | catalog:write | 200; 400, 401, 403, 404, 409 quando o uso impedir |
+| POST /categories | Criar Category ACTIVE | catalog:write | 201 + Location + ETag; 400, 401, 403, 409 para nome canônico duplicado |
+| GET /categories/{categoryId} | Obter Category | catalog:read | 200 + ETag; 401, 403, 404 |
+| GET /categories | Listar/paginar Categories; aceita `status=ACTIVE` para o formulário de Product | catalog:read | 200; 400, 401, 403 |
+| POST /categories/{categoryId}/deactivation | Desativar com If-Match | catalog:write | 200 + ETag; 401, 403, 404, 409 quando algum Product ACTIVE referenciar a Category, 412, 428 |
 
-Endpoints de hierarquia de categorias são intencionalmente ausentes até existir um requisito de hierarquia.
+O nome obrigatório de Category passa por Unicode NFC, remoção de whitespace externo e redução de sequências internas de whitespace a um espaço. A forma resultante, validada com 2–80 caracteres, é preservada para display; uma chave canônica separada, formada por uppercase com `Locale.ROOT`, aplica unicidade case-insensitive.
+
+Category nasce ACTIVE e não possui reativação na Fase 02. Category INACTIVE não recebe novas associações. Uma Category referenciada por qualquer Product ACTIVE não pode ser desativada; a desativação é permitida quando só houver referências de Products INACTIVE. Com um `If-Match` atual, uma segunda desativação é idempotente, mantém estado/versão e não cria novo efeito durável; um retry com ETag consumido ainda pode retornar 412 conforme o ADR-007.
+
+Corridas entre criação/mudança de Product e desativação de Category não podem confirmar Product ACTIVE associado a Category INACTIVE. A estratégia física de locking será definida e testada na implementação, não neste contrato.
+
+| Condição | Status | `code` do Problem Details |
+| --- | ---: | --- |
+| Category inexistente | 404 | `CATALOG_CATEGORY_NOT_FOUND` |
+| Nome canônico já utilizado | 409 | `CATALOG_CATEGORY_ALREADY_EXISTS` |
+| Nova associação a Category INACTIVE | 409 | `CATALOG_CATEGORY_INACTIVE` |
+| Category referenciada por algum Product ACTIVE | 409 | `CATALOG_CATEGORY_IN_USE` |
+
+Category não tem hierarquia nem subcategories, e cada Product referencia exatamente uma Category. PUT, reativação, associação many-to-many, dashboard e gestão visual de Category estão fora da Fase 02. Seed local, quando habilitado explicitamente, é idempotente e não altera o contrato HTTP.
 
 ## Contratos de mídia
 
@@ -359,7 +396,8 @@ Limites exatos exigem baseline, mas todo endpoint deve ter limites de tamanho de
 
 ## Evolução e testes do contrato
 
-- OpenAPI torna-se executável e revisada com a primeira implementação da API pública de negócio em `/api/v1`; os endpoints operacionais da Fase 01 não antecipam esse artefato.
+- OpenAPI torna-se executável, versionada e revisada com a primeira implementação da API de negócio em `/api/v1`, conforme o [ADR-011](ADR/ADR-011-openapi-contract.md); os endpoints operacionais da Fase 01 não antecipam esse artefato.
+- O backend deve corresponder ao contrato versionado, e o frontend gera tipos sem SDK runtime a partir do mesmo artefato.
 - Testes de contrato de consumidor/provedor protegem o limite do Mock do Centro de Vendas e schemas de eventos.
 - Verificações de compatibilidade retroativa executam antes do merge quando contratos mudarem.
 - Exemplos tornam-se fixtures de teste somente após validação; exemplos documentais não devem conter secrets reais nem dados pessoais.
@@ -369,20 +407,16 @@ Limites exatos exigem baseline, mas todo endpoint deve ter limites de tamanho de
 
 Status codes alternativos nas tabelas de endpoints estão explicitamente não resolvidos e devem ser definidos antes da aceitação da OpenAPI executável:
 
-- concorrência otimista: 409 Conflict versus 412 Precondition Failed, em coordenação com o ADR-007;
 - exclusão/limpeza assíncrona: 202 Accepted versus 204 No Content concluído;
 - comportamento de criar-ou-sincronizar: 200 OK existente versus 201 Created novo;
 - criação síncrona de avaliação com 201 Created versus assíncrona com 202 Accepted;
 - limite consistente entre 400 Bad Request e 422 Unprocessable Content;
-- se Product precisa de PUT e PATCH ou se um único contrato de atualização é suficiente.
 
 Nenhuma implementação pode selecionar o status que apenas faça um teste passar. A decisão deve atualizar exemplos, testes e OpenAPI consistentemente.
 
 ## Questões de contrato em aberto
 
 - Sessão por cookie versus access/refresh tokens para a arquitetura do navegador.
-- ETag/If-Match versus versão explícita no corpo para concorrência otimista.
-- Uma categoria versus várias categorias no comando inicial de produto.
 - Upload multipart direto versus upload controlado e assinado de objeto.
 - Upload binário de evidência versus referências a artefatos externos.
 - Atomicidade dos lotes de ingestão e tamanhos máximos de relatório.

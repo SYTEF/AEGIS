@@ -4,7 +4,7 @@
 
 Observabilidade permite que profissionais de engenharia expliquem o comportamento do sistema a partir dos sinais emitidos. Para o AEGIS, também é uma capacidade de Engenharia de Qualidade: testes e evidências de release devem ajudar uma investigação a atravessar limites de HTTP, banco de dados, mensagem, worker e downstream sem adivinhação.
 
-Este documento define a baseline atual e requisitos futuros de instrumentação. A Fase 01 implementa logs JSON, correlação HTTP/MDC, liveness, readiness e metadados seguros de build. OpenTelemetry, Prometheus e Grafana permanecem não implementados e serão introduzidos incrementalmente apenas quando autorizados e úteis.
+Este documento define a baseline atual e requisitos futuros de instrumentação. A Fase 01 implementa logs JSON, correlação HTTP/MDC, liveness, readiness e metadados seguros de build. Na Fase 02, Catalog reutilizará structured logging, X-Correlation-ID e Problem Details e fará PostgreSQL 18.4 participar de readiness. OpenTelemetry, Prometheus, Grafana e uma stack customizada de métricas permanecem fora da fase.
 
 ## Princípios
 
@@ -93,11 +93,13 @@ Nomes estáveis de evento são preferíveis à análise de texto, por exemplo ca
 
 O evento implementado `http.request.completed` inclui método, template de rota resolvido quando disponível — ou fallback de path limitado e sanitizado —, status, duração em milissegundos e `correlationId` pelo MDC. Query string, matrix parameters e caracteres de controle são removidos pela mesma política usada em Problem Details. O startup info que revelaria usuário e diretório local está desabilitado. Erros inesperados registram classificação, tipo e primeiro frame estrutural pertencente ao AEGIS quando disponível, sem mensagem, causa, payload ou stack trace bruto. Os testes verificam que path local, query string, matrix parameters, valor de correlação rejeitado e secrets sintéticos não aparecem nos logs capturados, e que origens distintas permanecem diagnosticáveis.
 
+Para comandos materiais da Fase 02, eventos estáveis como `catalog.product.created`, `catalog.product.updated`, `catalog.product.deactivated`, `catalog.product.conflict`, `catalog.category.created`, `catalog.category.deactivated` e `catalog.category.conflict` registram somente operação, resultado, IDs opacos dos recursos quando necessários, versão, ator `LOCAL_PREVIEW`, duração, código seguro do conflito e correlation ID. Isso deve permitir distinguir Category inexistente, inativa, duplicada ou em uso e investigar a corrida Product/Category sem revelar conteúdo. Payload, Description, SKU, nome de Category, preço, headers completos e SQL com valores são proibidos. Leituras usam o evento HTTP existente e não geram um log de domínio por item retornado.
+
 Nunca registrar senhas, tokens/cookies, headers de autorização, URLs assinadas, secrets, corpos completos de solicitação/resposta, conteúdo binário recebido, parâmetros SQL brutos com dados ou dados pessoais desnecessários. A redação é baseada em allowlist e testada. Caracteres de controle são sanitizados para impedir injeção em log.
 
 ## Métricas
 
-Métricas usam labels estáveis e de baixa cardinalidade. Dimensões de produto, dependência e qualidade incluem:
+As dimensões abaixo orientam instrumentação futura e qualquer métrica já oferecida proporcionalmente pelo runtime. Métricas usam labels estáveis e de baixa cardinalidade. A Fase 02 não introduz exporter, registry customizado, Prometheus ou dashboard apenas para preencher escopo; somente sinais com consumidor/uso diagnóstico concreto podem ser adicionados.
 
 ### HTTP/aplicação
 
@@ -175,6 +177,8 @@ A política de amostragem deve preservar erros e experimentos críticos de relea
 A resposta pública de health é mínima. A política de readiness da API de Catálogo deve distinguir a necessidade essencial do banco da degradação assíncrona de broker/downstream: falha downstream não deve desabilitar desnecessariamente leituras/escritas do catálogo quando a outbox puder acumular com segurança. A readiness do worker depende dos limites de broker/banco necessários.
 
 Na Fase 01, liveness e readiness retornam somente `UP` porque não existem dependências externas nem migrações. Ambas usam a porta HTTP da aplicação. Outros endpoints do Actuator não são expostos.
+
+Quando a Fase 02 for implementada, liveness continuará independente do PostgreSQL 18.4. Readiness exigirá conexão essencial com o banco e migrations concluídas, sem expor hostname, credenciais, schema ou detalhes de componente na resposta pública. Outbox sem publicador não cria uma dependência de broker nem um health fictício.
 
 Atualização da fonte de evidência de qualidade é status de qualidade, não liveness do processo.
 
@@ -272,7 +276,7 @@ Todo runtime e recurso de telemetria identifica versão da aplicação, commit/b
 - Testes de componente/integração verificam eventos/atributos estruturados exigidos para resultados críticos sem especificar demais o texto.
 - Testes de redação injetam valores sintéticos semelhantes a secrets/dados pessoais e verificam sua ausência em logs/traces/erros.
 - Testes de propagação de trace atravessam HTTP, outbox/mensagem e mock downstream.
-- Testes de métricas verificam conjuntos limitados de labels e classificação correta do resultado.
+- Testes de métricas verificam conjuntos limitados de labels e classificação correta somente quando a métrica tiver sido aprovada e implementada; a Fase 02 não cria uma stack customizada para satisfazer este item.
 - Health checks são testados sob falha e recuperação de dependências.
 - Regras de alerta/runbooks são exercitados com cenários sintéticos/de falha seguros.
 - Experimentos do Laboratório de Falhas exigem telemetria esperada e evidência de recuperação.

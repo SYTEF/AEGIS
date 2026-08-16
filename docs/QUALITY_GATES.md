@@ -44,6 +44,20 @@ Para a fundação executável, a evidência exigida é: Maven Wrapper fixado e �
 
 Não há Pontuação de Qualidade, Classificação de Risco nem recomendação automática nesta fase. Varredura automatizada de secrets/dependências, SBOM, assinatura e proveniência de artefato ainda não são gates implementados; a revisão de dependências e secrets é manual até que ferramenta e política sejam aprovadas.
 
+### Gates aplicáveis à Fase 02
+
+A Fase 02 acrescenta, sem remover os gates da fundação:
+
+- backend build/testes/arquitetura em Linux e Windows;
+- integração PostgreSQL 18.4 real para migrations, constraints, atomicidade, unicidade, optimistic locking e invariável concorrente Product/Category;
+- conformidade de API, Problem Details, ETag/If-Match e contrato OpenAPI;
+- frontend install reproduzível, lint, typecheck, testes de unidade/componente/integração/acessibilidade e build;
+- smoke full-stack manual com frontend, backend e PostgreSQL reais;
+- Design Quality Gate;
+- Gate de Exposição Externa, que permanece bloqueante enquanto Auth/RBAC não existirem.
+
+Playwright, Pontuação de Qualidade, Classificação de Risco, recomendação automática, Prometheus, Grafana e OpenTelemetry não são evidências exigidas da Fase 02.
+
 ## Gates progressivos
 
 ### 1. Gate de Pull Request
@@ -89,13 +103,32 @@ Exigido conforme o escopo da alteração e release:
 
 - suítes de unidade, componente e integração passam;
 - suítes de API e contrato passam;
-- jornadas E2E críticas selecionadas passam quando a UI existir;
+- jornadas E2E críticas selecionadas passam quando a política da fase as exigir; na Fase 02, a evidência de navegador é um smoke full-stack manual e Playwright permanece adiado;
 - verificações de qualidade de dados/migração/reconciliação passam;
 - a rastreabilidade de requisitos não tem lacunas críticas sem explicação;
 - testes instáveis/em quarentena são relatados separadamente com responsável e expiração;
 - resultados de teste correspondem ao build exato e ao ambiente/perfil aprovado.
 
 Falhas críticas: falha de caso de teste crítico; comportamento de corrupção/atualização perdida/mensagem perdida; suíte obrigatória indisponível ou atribuída a outro build; teste crítico em quarentena sem evidência equivalente.
+
+### Gate de Qualidade de Design
+
+Objetivo: tornar a qualidade visual e de interação uma propriedade verificável, não uma opinião estética.
+
+O gate é obrigatório para a experiência Product da Fase 02 e falha quando ocorrer qualquer uma destas condições:
+
+- uma tela/estado aprovado está ausente: loading, empty, no-results, erro, validação, conflito ou sucesso;
+- a jornada listagem → criação → detalhe → edição → desativação não oferece ações/feedback claros;
+- existe overflow horizontal, conteúdo essencial truncado ou layout quebrado nos viewports aprovados entre 320 e 1920 px;
+- um fluxo crítico não é operável por teclado, perde foco ou remove o focus visível;
+- contraste, nomes/roles, labels ou mensagens de erro não atendem à baseline WCAG 2.2 AA aprovada;
+- submit duplicado é possível ou um HTTP 412 descarta silenciosamente a entrada do usuário;
+- estado depende somente de cor, loading não possui conclusão/erro recuperável ou sucesso não é anunciado de forma perceptível;
+- há erro de console não justificado;
+- dados fictícios são usados somente para preencher a interface;
+- componentes ignoram tokens/foundations sem justificativa e produzem inconsistência visível.
+
+Evidência mínima: checklist versionado, resultados dos testes frontend aplicáveis e registro do smoke/revisão manual nos viewports e navegadores aprovados. “Estar bonito” não substitui esses critérios.
 
 ### 4. Gate de Segurança
 
@@ -175,6 +208,7 @@ Todo PR recebe gates baseline. Suítes adicionais são selecionadas pelos módul
 | --- | --- |
 | Permissão/autenticação | revisão de segurança, matriz de permissão/negação, testes de sessão/auditoria |
 | Dinheiro/estoque/SKU de produto | limites/propriedade, API, persistência/concorrência e qualidade de dados |
+| Category ou associação Product/Category | normalização/unicidade canônica, lifecycle, conflitos de uso e corrida de associação versus desativação em PostgreSQL real |
 | Schema de API/evento | compatibilidade e contrato de consumidor/provedor |
 | Retry/outbox/worker | integração com banco/broker, idempotência, reinício e resiliência |
 | Upload/processamento | segurança de arquivo hostil, integração com armazenamento, verificações de recursos/resiliência |

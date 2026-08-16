@@ -153,13 +153,13 @@ Premissas devem ser validadas durante a implementação. Premissas frágeis ou r
 | Arquitetura | O limite de Monólito Modular é proporcional. RabbitMQ e MinIO são adiados até que os requisitos de integração/mídia os justifiquem; o worker pode permanecer na mesma base de código. Nenhuma tecnologia proibida é planejada por padrão. |
 | QA | Testabilidade, testes em camadas, rastreabilidade, evidências, ciclo de defeito, testes não funcionais e integridade dos gates críticos estão presentes nos requisitos e na arquitetura, em vez de serem anexados apenas à CI. |
 | Segurança | A fundação cobre RBAC, autorização de objeto, uploads hostis, secrets, proveniência de evidências, integridade da política de release e contenção do Laboratório de Falhas. Os designs concretos de identidade/sessão e retenção permanecem deliberadamente abertos. |
-| DevOps | A Fase 01 introduziu um backend local executável sem Kubernetes/nuvem, com Maven Wrapper, Jar e endpoints operacionais. A implementação está validada localmente e ainda aguarda o gate da CI remota. |
+| DevOps | A Fase 01 introduziu um backend local executável sem Kubernetes/nuvem, com Maven Wrapper, Jar e endpoints operacionais. A implementação passou pela CI remota Linux/Windows e foi integrada à `main`. |
 | Observabilidade | Fluxos críticos definem logs, métricas, traces, IDs, semântica de health, dashboards, alertas e um caminho de investigação para QA. Backends/armazenamento e retenção de telemetria não estão resolvidos. |
 | Red Team | As premissas mais frágeis são proveniência confiável das fontes de qualidade, calibração realista da pontuação, segregação suficiente de funções para uma pessoa, negação confiável do Laboratório de Falhas em produção, recursos locais modestos e representatividade do mock externo. |
 
 ### Decisões
 
-- A fundação combina a documentação oficial com um backend mínimo executável da Fase 01; isso não alega certificação de segurança, prontidão para produção nem conclusão do gate remoto.
+- A fundação combina a documentação oficial com um backend mínimo executável da Fase 01; isso não alega certificação de segurança nem prontidão para produção.
 - Começar como Monólito Modular conforme o [ADR-001](ADR/ADR-001-modular-monolith.md) aceito, com APIs explícitas dos módulos e PostgreSQL como fonte transacional da verdade pretendida.
 - Introduzir MinIO para necessidades aprovadas de imagem e RabbitMQ para integração externa confiável apenas em suas respectivas fases aprovadas.
 - Manter a política de qualidade versionada e explicável; regras de bloqueio crítico prevalecem sobre a Pontuação de Qualidade.
@@ -178,7 +178,7 @@ Premissas devem ser validadas durante a implementação. Premissas frágeis ou r
 
 ### Recomendações
 
-- Concluir o gate da CI remota e a revisão humana da Fase 01 antes de autorizar commit/merge ou qualquer trabalho da Fase 02.
+- Exigir autorização humana separada antes de implementar as decisões já formalizadas da Fase 02; a aprovação documental não autoriza código, dependências ou infraestrutura.
 - Identificar com destaque métricas futuras/preliminares em toda UI implementada e saída de release até que sejam calibradas.
 - Validar proveniência de evidências e identidade de build antes de implementar qualquer pontuação.
 - Finalizar autenticação, matriz de roles, retenção e autoridade de exceções imediatamente antes das respectivas fases.

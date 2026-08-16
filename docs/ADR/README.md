@@ -83,12 +83,10 @@ Os títulos a seguir são candidatos, não decisões aceitas:
 
 | Candidato | Problema a decidir | Momento esperado |
 | --- | --- | --- |
-| ADR-002 PostgreSQL | Adequação da persistência, estratégia de schema/migração e versão local | Antes da primeira fatia durável do catálogo |
 | ADR-003 RabbitMQ | Por que mensageria assíncrona é necessária, topologia, retry/DLQ e alternativas | Antes da fase de integração |
 | ADR-004 MinIO | Necessidade de object storage, ciclo de vida, configuração local e alternativas | Antes da fase de mídia |
 | ADR-005 Playwright | Papel dos testes no navegador, estrutura do projeto, matriz de navegadores e alternativas | Antes da primeira suíte E2E do frontend |
 | ADR-006 Autenticação | Modelo de cookie/token/provedor, ciclo de sessão e consequências de segurança | Antes da fase de autenticação |
-| ADR-007 Concorrência otimista | ETag versus contrato com versão explícita | Antes do endpoint mutável do catálogo |
 | ADR-008 Fórmula de qualidade e versionamento de política | Dimensões da pontuação, evidência ausente, gates e governança | Antes da implementação do Motor de Qualidade |
 | ADR-009 Backends de telemetria de observabilidade | Coleta/armazenamento, perfil local, retenção e custo | Antes da fase completa de observabilidade |
 
@@ -111,5 +109,9 @@ Sem resposta convincente e aprovação explícita, a decisão é **Rejected**.
 | ADR | Status | Decisão |
 | --- | --- | --- |
 | [ADR-001 — Monólito Modular](ADR-001-modular-monolith.md) | Accepted | Começar com módulos explícitos no mesmo processo e exigir evidência mensurada antes da distribuição |
+| [ADR-002 — PostgreSQL para a persistência do Catálogo](ADR-002-postgresql.md) | Accepted | Usar PostgreSQL 18.4, schema `catalog`, Flyway, Docker Compose local e Testcontainers, sem H2 |
+| [ADR-007 — ETag/If-Match e concorrência otimista do Catálogo](ADR-007-etag-if-match-optimistic-concurrency.md) | Accepted | Exigir `If-Match` em PUT/desativação, retornar 428 quando ausente e 412 quando stale |
+| [ADR-010 — Arquitetura do frontend do AEGIS Commerce](ADR-010-frontend-architecture.md) | Accepted | Construir uma SPA React/TypeScript com Vite, boundaries por feature e Design Quality Gate |
+| [ADR-011 — OpenAPI como contrato entre backend e frontend](ADR-011-openapi-contract.md) | Accepted | Versionar OpenAPI, validar drift e gerar somente tipos TypeScript, sem SDK runtime |
 
 ADRs futuros permanecem candidatos até que sua decisão seja necessária e revisada.

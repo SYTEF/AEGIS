@@ -35,6 +35,19 @@ A fundação atual é validada por `./mvnw verify` ou `.\mvnw.cmd verify`. A su�
 
 Testes unitários exercitam a política pura de correlação e a contribuição segura de build. Testes de componente/integração exercitam o filtro e o servidor HTTP real. A regra ArchUnit atual protege apenas uma direção útil e existente: `foundation.correlation` não depende de Spring, Jakarta nem `foundation.web`. Não existe meta percentual artificial de cobertura, retry automático ou `sleep` arbitrário.
 
+## Estratégia aprovada para a Fase 02
+
+A Fase 02 adicionará cobertura orientada aos riscos reais do Catalog Experience:
+
+- domínio/backend: normalização e imutabilidade de SKU; normalização distinta de Product Name, Product Description e Category name; BRL/escala; estoque; Category obrigatória/ACTIVE para novas associações; lifecycles e no-op de segunda desativação;
+- PostgreSQL 18.4/Testcontainers: migrations, constraints, unicidade canônica de Category, SKU concorrente, optimistic locking, corrida Product/Category e rollback atômico de Product/history/outbox intent, sem H2;
+- API: validação, paginação/ordenação/filtros, Problem Details, correlação, ETag/If-Match, HTTP 428/412 e rejeição de mass assignment;
+- contrato: OpenAPI produzido pelo backend versus artefato versionado e tipos TypeScript gerados sem drift;
+- frontend: unidade, componente, formulário, integração no boundary HTTP, estados assíncronos, conflito e acessibilidade;
+- sistema: smoke full-stack manual com frontend, backend e PostgreSQL reais.
+
+Playwright permanece adiado na Fase 02. Sua ausência não autoriza omitir o smoke manual nem reduzir testes frontend. Não haverá meta percentual artificial de cobertura.
+
 ## Atividades de qualidade no ciclo de vida
 
 | Etapa | Atividades | Evidências |
@@ -66,6 +79,7 @@ Uma classificação qualitativa inicial (Crítico, Alto, Médio, Baixo) é regis
 | --- | --- | --- |
 | Autenticação/RBAC | comprometimento de conta, elevação de privilégio, enumeração | política em unidade, API negativa/abuso, verificações de segurança e auditoria |
 | Preço/estoque/SKU | corrupção silenciosa, duplicidades, atualizações perdidas | testes de limite/propriedade, constraints do banco, concorrência e API |
+| Product/Category | associação ativa/inativa inválida, unicidade divergente por caixa/Unicode, corrida de desativação | normalização em unidade, API de conflito, constraints e concorrência PostgreSQL real |
 | Upload de mídia | arquivo malicioso, exaustão de recursos, acesso não autorizado | validação de conteúdo, autorização, testes de segurança e resiliência |
 | Outbox/mensageria | alterações perdidas/duplicadas, tempestade de retry, trabalho travado | integração transacional, idempotência, reinício e testes de falha |
 | Ingestão de qualidade | atribuição ao build errado, evidência duplicada/desatualizada/malformada | schema, idempotência, qualidade de dados e autorização |
@@ -96,7 +110,10 @@ Escopo: regras puras de domínio, value objects, validadores, políticas, mapead
 Exemplos principais:
 
 - normalização de SKU e comportamento da decisão de unicidade;
+- normalização Unicode/whitespace e limites de Category name e Product Name, incluindo chave canônica por `Locale.ROOT`;
+- normalização NFC/LF e preservação de whitespace interno, parágrafos, quebras de linha e caixa de Product Description;
 - limites de dinheiro/estoque e regras de transição do produto;
+- regras de Category ACTIVE/INACTIVE, associação permitida e no-op de segunda desativação;
 - políticas de permissão e avaliação de gates;
 - fórmula de Pontuação de Qualidade/risco, tratamento de dados ausentes e prevalência de bloqueio crítico;
 - classificação de retry/cálculo de backoff;
@@ -116,9 +133,10 @@ Escopo: integração real com PostgreSQL, RabbitMQ, MinIO e o adaptador do mock 
 
 Cenários exigidos incluem:
 
-- migrações e constraints do banco;
+- migrações e constraints no PostgreSQL 18.4;
 - rollback de transação e concorrência otimista;
-- atomicidade da outbox, reinício do publicador e reconciliação de item travado;
+- unicidade concorrente da chave canônica de Category e corrida entre criação/mudança de Product e desativação de Category, sem prescrever previamente o mecanismo físico de locking;
+- atomicidade de Product/history/outbox intent na Fase 02; reinício do publicador e reconciliação de item travado somente quando a fase de Integração introduzir um publicador;
 - entrega duplicada/idempotência, retry e comportamento de dead-letter;
 - upload/processamento/limpeza de objeto e armazenamento indisponível;
 - timeout do worker e classificação de erro downstream.
@@ -153,7 +171,7 @@ Contratos incluem OpenAPI HTTP, schemas de eventos, Mock do Centro de Vendas Ext
 
 ### Testes ponta a ponta
 
-Use Playwright + TypeScript para um conjunto deliberadamente pequeno de jornadas no navegador depois que o frontend existir. Jornadas candidatas iniciais:
+Use Playwright + TypeScript para um conjunto deliberadamente pequeno de jornadas no navegador somente depois que o ADR-005 e a fase correspondente o autorizarem. A existência do frontend na Fase 02 não antecipa essa suíte. Jornadas candidatas futuras:
 
 1. operador autorizado cria e atualiza um produto;
 2. usuário não autorizado não consegue alterar estado do catálogo;
@@ -211,7 +229,7 @@ Cada experimento declara hipótese, estado estável, falha injetada, blast radiu
 Buscar WCAG 2.2 AA nos fluxos críticos suportados. Combinar:
 
 - revisão semântica de design/componentes;
-- regras automatizadas em verificações de componente e Playwright;
+- regras automatizadas em verificações de componente e, quando autorizado em fase posterior, Playwright;
 - navegação somente por teclado e foco visível;
 - smoke com leitor de tela nas jornadas críticas;
 - zoom/reflow, contraste, identificação de erro e anúncio de status;

@@ -42,18 +42,18 @@ quality:policy:admin controla alterações em fórmulas de pontuação, polític
 
 | ID | Prioridade | Requisito | Critérios de aceite |
 | --- | --- | --- | --- |
-| REQ-CAT-001 | Must | Usuários autorizados devem criar um produto com SKU, nome, descrição, preço, estoque e atribuição de categoria. | Entrada válida cria um produto identificável; campos inválidos geram erros no nível do campo e nenhum produto parcial. |
+| REQ-CAT-001 | Must | Usuários autorizados devem criar um produto com SKU, nome, descrição, preço, estoque e exatamente uma Category obrigatória. | Entrada válida cria um Product ACTIVE identificável e associado a uma Category ACTIVE; Category ausente ou INACTIVE é rejeitada sem Product parcial. |
 | REQ-CAT-002 | Must | Usuários autorizados devem recuperar um produto por seu identificador estável. | Um produto visível existente retorna sua representação atual; um identificador desconhecido retorna não encontrado sem vazar dados restritos. |
-| REQ-CAT-003 | Must | Usuários autorizados devem atualizar atributos permitidos do produto com proteção de concorrência. | Uma versão atual é atualizada atomicamente e registra histórico; uma versão obsoleta retorna conflito sem sobrescrever dados mais novos. |
-| REQ-CAT-004 | Must | Usuários autorizados devem desativar um produto sem apagar o histórico necessário. | A desativação remove o produto dos resultados ativos padrão, preserva o histórico e emite eventos de auditoria/integração. |
-| REQ-CAT-005 | Must | Usuários autorizados devem gerenciar categorias e seu estado ativo. | Alterações válidas de categoria são persistidas; uma categoria em uso proibitivo não pode ser removida ou desativada sem um resultado explícito em conformidade com a política. |
-| REQ-CAT-006 | Must | O SKU de produto deve ser normalizado e único. | SKUs normalizados equivalentes não podem coexistir; uma duplicidade retorna conflito e não altera dados. |
-| REQ-CAT-007 | Must | Preço e estoque do produto devem seguir regras numéricas definidas. | Preço ou estoque negativo é rejeitado; precisão decimal e moeda são determinísticas; valores válidos de limite persistem exatamente. |
+| REQ-CAT-003 | Must | Usuários autorizados devem atualizar atributos permitidos do produto com proteção de concorrência por ETag/If-Match. | Um `If-Match` atual permite atualização atômica e registra histórico/outbox intent; ausência retorna HTTP 428 e versão stale retorna HTTP 412 sem sobrescrever dados mais novos. SKU não pode ser alterado. |
+| REQ-CAT-004 | Must | Usuários autorizados devem desativar um produto sem apagar o histórico necessário. | A primeira desativação torna o Product INACTIVE, remove-o dos resultados ativos padrão e preserva histórico/outbox intent; uma segunda desativação é idempotente e não altera versão nem cria novo histórico/outbox. Reativação não existe na Fase 02. |
+| REQ-CAT-005 | Must | Usuários autorizados devem criar, consultar, listar e desativar Categories pelo backend mínimo da Fase 02. | Category nasce ACTIVE com nome normalizado e único sem diferenciar maiúsculas/minúsculas; listagem aceita filtro `status=ACTIVE`; Category usada por Product ACTIVE não pode ser desativada, Category usada somente por Products INACTIVE pode ser desativada e a segunda desativação é idempotente. |
+| REQ-CAT-006 | Must | O SKU de Product deve ser obrigatório, normalizado, imutável e único. | Remover whitespace externo, converter para uppercase e validar `^[A-Z0-9._-]{3,64}$`; equivalentes normalizados não coexistem entre ativos ou inativos, SKU nunca é reutilizado na Fase 02 e duplicidade retorna conflito sem alterar dados. |
+| REQ-CAT-007 | Must | Preço e estoque do Product devem seguir as regras numéricas da Fase 02. | Preço é BRL, decimal com escala 2, intervalo compatível com `NUMERIC(19,2)` e maior ou igual a zero; estoque é inteiro maior ou igual a zero; `float`/`double` são proibidos para dinheiro e valores válidos persistem exatamente. |
 | REQ-CAT-008 | Must | Usuários devem pesquisar e filtrar o catálogo. | Combinações suportadas de consulta, categoria e estado ativo retornam apenas registros autorizados correspondentes, com os critérios aplicados representados na resposta. |
 | REQ-CAT-009 | Must | Coleções de produtos devem ser paginadas e ordenadas deterministicamente. | O tamanho da página é limitado, parâmetros inválidos são rejeitados e solicitações repetidas sobre dados inalterados retornam ordenação estável. |
 | REQ-CAT-010 | Must | Alterações materiais do produto devem criar um registro de histórico. | Toda criação/atualização/desativação bem-sucedida registra ator, momento, produto, ação e uma representação segura da alteração antes/depois. |
 | REQ-CAT-011 | Should | Usuários devem visualizar o histórico do produto se autorizados. | Os resultados são cronológicos, paginados e não expõem valores sensíveis para segurança que tenham sido redigidos. |
-| REQ-CAT-012 | Must | Escritas do catálogo devem publicar um evento de domínio interno após commit bem-sucedido. | Toda alteração material confirmada produz um evento logicamente identificável para processamento downstream; alterações revertidas não publicam evento confirmado. |
+| REQ-CAT-012 | Must | Escritas materiais do Catálogo devem registrar uma intenção durável de evento para processamento futuro. | Product, histórico e catalog outbox intent são persistidos atomicamente; rollback não deixa intenção confirmada. A Fase 02 não possui worker, RabbitMQ nem publicação externa. |
 
 ### Mídia (MED)
 
@@ -149,10 +149,15 @@ As metas abaixo são objetivos iniciais de design. Limites exatos devem ter base
 | BR-AUTH-001 | Negar por padrão: a ausência de permissão explícita significa que a ação é proibida. |
 | BR-AUTH-002 | Usuários desativados não podem iniciar novas sessões nem usar sessões revogadas. |
 | BR-AUTH-003 | Antes que a Fase 03 forneça autenticação/RBAC reais, endpoints de mutação do catálogo são apenas uma prévia de desenvolvimento local, não devem ser expostos externamente e não podem satisfazer critérios de aceite de autorização. |
-| BR-CAT-001 | A comparação de SKU usa uma regra de normalização documentada e é única entre produtos ativos e inativos, salvo se um ADR alterar a política de reutilização. |
-| BR-CAT-002 | O preço é não negativo, usa moeda ISO 4217 explícita e semântica decimal fixa; aritmética de ponto flutuante é proibida para dinheiro persistido. |
+| BR-CAT-001 | SKU remove whitespace externo, é convertido para uppercase e deve corresponder a `^[A-Z0-9._-]{3,64}$`; é imutável, único entre Products ativos/inativos e nunca reutilizado na Fase 02. |
+| BR-CAT-002 | Na Fase 02, preço é BRL, maior ou igual a zero, tem escala 2 e persistência `NUMERIC(19,2)`; aritmética `float`/`double` é proibida para dinheiro. |
 | BR-CAT-003 | O estoque é um inteiro maior ou igual a zero; qualquer modelo futuro de reserva exige regras separadas. |
 | BR-CAT-004 | A exclusão de produto é lógica no escopo inicial para que histórico, auditoria e evidências de release permaneçam referencialmente significativos. |
+| BR-CAT-005 | Todo Product possui exatamente uma Category obrigatória. Category possui estado ACTIVE/INACTIVE; toda criação ou nova associação de Product exige Category ACTIVE, e Category INACTIVE não recebe novas associações. Hierarquia e múltiplas Categories por Product estão fora da Fase 02. |
+| BR-CAT-006 | Name de Product é obrigatório, normalizado em Unicode NFC, tem whitespace externo removido e sequências internas de whitespace reduzidas a um espaço; a validação de 3–120 caracteres ocorre depois da normalização. Description é obrigatória, normalizada em Unicode NFC e line endings LF, tem somente whitespace externo removido, preserva whitespace interno significativo, parágrafos e quebras de linha e não sofre transformação de caixa; a validação de 1–2000 caracteres ocorre depois da normalização. |
+| BR-CAT-007 | Product nasce ACTIVE, pode ser desativado e não pode ser reativado na Fase 02. Desativar um Product já INACTIVE não altera versão nem produz novo histórico/outbox intent. |
+| BR-CAT-008 | O nome de Category é obrigatório e possui 2–80 caracteres após Unicode NFC, remoção de whitespace externo e redução de sequências internas de whitespace a um espaço. Essa forma normalizada é usada para exibição; uma chave canônica separada, obtida por uppercase com `Locale.ROOT`, aplica unicidade case-insensitive. Category nasce ACTIVE, não é reativada na Fase 02 e uma segunda desativação não produz novo efeito durável. |
+| BR-CAT-009 | Category referenciada por qualquer Product ACTIVE não pode ser desativada; se todas as referências forem de Products INACTIVE, a desativação é permitida. Corridas entre criação/mudança de Product e desativação de Category não podem confirmar Product ACTIVE associado a Category INACTIVE; a estratégia física de locking é uma decisão de implementação a ser comprovada por testes. |
 | BR-MED-001 | Extensão de arquivo ou MIME type informado pelo cliente nunca é validação suficiente isoladamente. |
 | BR-INT-001 | Presume-se entrega at-least-once; consumidores devem ser idempotentes. Não se alega exactly once entre limites do sistema. |
 | BR-INT-002 | Retry é permitido somente para falhas classificadas como transitórias; falhas de validação e autorização não se tornam bem-sucedidas por retry. |
@@ -184,8 +189,7 @@ Uma capacidade é aceitável somente quando todas as condições aplicáveis for
 ## Questões de requisitos em aberto
 
 - Qual mecanismo de identidade e modelo de token/sessão melhor atendem à demonstração local e ao futuro deploy?
-- Um SKU pode ser reutilizado após a desativação do produto e quais seriam as consequências downstream?
-- Quais moedas e regras de localidade pertencem à v1.0?
+- Quais moedas e regras de localidade pertencem à v1.0 depois da baseline BRL-only da Fase 02?
 - Que duração de armazenamento de evidências e retenção de dados pessoais são necessárias?
 - Qual dataset de referência e perfil de hardware tornarão os limites de performance reproduzíveis?
 - Quais sistemas de origem são autoridades para defeitos e requisitos na versão de portfólio?

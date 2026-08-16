@@ -31,15 +31,15 @@ O AEGIS começa como um **Monólito Modular (Modular Monolith)**, formalmente ac
 - `quality`: releases, evidências de teste, métricas, gates, risco e recomendações;
 - `audit`: registros imutáveis de ações relevantes para segurança e negócio.
 
-As tecnologias futuras preferenciais são React e TypeScript, Java e Spring Boot, PostgreSQL, RabbitMQ, MinIO, Playwright, k6, Docker Compose, GitHub Actions, OpenTelemetry, Prometheus e Grafana. Elas não são implementadas por esta fundação e continuam sujeitas a Registros de Decisão Arquitetural (Architecture Decision Records — ADRs).
+As tecnologias futuras preferenciais são React e TypeScript, Java e Spring Boot, PostgreSQL, RabbitMQ, MinIO, Playwright, k6, Docker Compose, GitHub Actions, OpenTelemetry, Prometheus e Grafana. Para a Fase 02, PostgreSQL 18.4/Flyway/Compose/Testcontainers, a arquitetura React/TypeScript, ETag/If-Match e o contrato OpenAPI já foram aceitos em ADRs; eles ainda não estão implementados. As demais tecnologias continuam sujeitas às suas fases e decisões.
 
-A fundação executável da Fase 01 usa JDK 25 LTS, Spring Boot 4.1.0, Maven 3.9.16 por meio do Maven Wrapper, Jar executável, coordenadas Maven `io.github.sytef:aegis` e pacote-base `io.github.sytef.aegis`. O workflow de CI usa `permissions: contents: read` e está configurado para validar o build em Linux e Windows; a Fase 01 permanece aguardando o gate da execução remota.
+A fundação executável da Fase 01 usa JDK 25 LTS, Spring Boot 4.1.0, Maven 3.9.16 por meio do Maven Wrapper, Jar executável, coordenadas Maven `io.github.sytef:aegis` e pacote-base `io.github.sytef.aegis`. O workflow de CI usa `permissions: contents: read`; a Fase 01 passou pela execução remota em Linux/Windows e foi integrada à `main`.
 
 Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch e microservices estão explicitamente excluídos, a menos que um problema mensurável os justifique.
 
 ## Estado do repositório
 
-Este repositório está atualmente na **v0.1 — Fundação**. Ele contém a documentação oficial e um backend mínimo executável com health, info seguro, Problem Details, correlação, logging estruturado, testes e CI. Ainda não há frontend, banco de dados, mensageria, object storage, autenticação nem comportamento de negócio do catálogo.
+Este repositório contém a **v0.1 — Fundação** concluída. As decisões documentais da **v0.2 — Catalog Experience** estão aprovadas, porém ainda não há frontend, banco de dados, migrations, mensageria, object storage, autenticação nem comportamento de negócio do Catálogo implementados.
 
 ## Execução local
 

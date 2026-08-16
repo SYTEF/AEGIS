@@ -19,7 +19,7 @@ As fases detalhadas e prontas para aprovação estão em [PLANS.md](../PLANS.md)
 
 ### v0.1 — Fundação
 
-**Resultado:** baseline oficial de produto, requisitos, arquitetura, dados, API, qualidade, segurança, observabilidade e governança de execução.
+**Resultado:** baseline oficial de produto e uma fundação backend mínima, executável e validada em CI Linux/Windows.
 
 Inclui:
 
@@ -29,23 +29,27 @@ Inclui:
 - estratégia de Engenharia de Qualidade em camadas e gates progressivos;
 - modelo conceitual de dados, roadmap, planos e processo de ADR;
 - regras operacionais para contribuidores e agentes.
+- aplicação Spring Boot executável com health/info seguros, Problem Details, correlação, logging estruturado, testes e CI.
 
-Não inclui código executável da aplicação nem infraestrutura. Questões documentais e limites preliminares permanecem explícitos, em vez de serem apresentados falsamente como resolvidos.
+Não inclui frontend, banco de dados, infraestrutura externa, autenticação nem domínio de negócio. Questões documentais e limites preliminares permanecem explícitos, em vez de serem apresentados falsamente como resolvidos.
 
 ### v0.2 — Catálogo
 
-**Resultado:** primeiras fatias verticais de valor do produto para categorias e produtos como **PRÉVIA DE DESENVOLVIMENTO LOCAL**.
+**Resultado:** primeiro Catalog Experience vertical, com Product persistido e uma experiência web profissional como **PRÉVIA DE DESENVOLVIMENTO LOCAL**.
 
-Escopo candidato:
+Escopo aprovado para implementação mediante autorização humana separada:
 
-- fundação mínima e reproduzível de backend e banco de dados;
-- capacidades de criar/ler/atualizar/desativar produtos e categorias;
-- regras de SKU, dinheiro, estoque, validação, paginação/filtro e concorrência;
-- fundamentos de histórico/auditoria;
-- contrato executável da API e testes do catálogo em camadas;
-- feedback mínimo de CI e telemetria proporcional aos fluxos implementados.
+- Product com exatamente uma Category obrigatória; backend mínimo de Category com criação/leitura/listagem/desativação, filtro ACTIVE e regras fechadas de normalização, unicidade, lifecycle e uso;
+- PostgreSQL 18.4 no schema `catalog`, Flyway, Docker Compose local e Testcontainers, sem H2; imagem oficial com digest fixado quando o Compose for criado;
+- criação/leitura/listagem/atualização/desativação de Product, com SKU imutável, BRL, estoque, ciclo de vida e ETag/If-Match;
+- histórico e intenção de outbox atômicos, sem worker, RabbitMQ ou publicação externa;
+- contrato OpenAPI versionado entre backend e frontend;
+- SPA React/TypeScript com Application Shell, Products List, Create, Details e Edit Product;
+- experiência light-first, responsiva e acessível, sujeita ao Design Quality Gate;
+- testes backend/frontend em camadas e smoke full-stack manual, sem Playwright;
+- structured logging, correlation ID, Problem Details e health proporcionais, sem antecipar Prometheus/Grafana/OpenTelemetry.
 
-Mídia, mensageria externa e UI completa no navegador permanecem fora até seus marcos. Começar com uma Fase 01 deliberadamente pequena antes de concluir este marco.
+Mídia, gestão visual completa de Category, mensageria/publicação externa, Auth/RBAC, dark mode completo e UI do Centro de Controle de Qualidade permanecem fora deste marco.
 
 Até que a autenticação/RBAC da v0.3 esteja concluída:
 
@@ -57,7 +61,7 @@ Até que a autenticação/RBAC da v0.3 esteja concluída:
 
 ### v0.3 — Autenticação
 
-**Resultado:** identidades e RBAC aplicado no servidor protegem o comportamento existente do catálogo.
+**Resultado:** identidades e RBAC aplicados no servidor e no navegador protegem o comportamento e a experiência existentes do catálogo.
 
 Escopo candidato:
 
@@ -66,6 +70,7 @@ Escopo candidato:
 - matriz de autorização do catálogo e administração;
 - controles de abuso de autenticação e auditoria de segurança;
 - testes negativos de API/segurança e bootstrap local documentado.
+- integração de sessão/autorização ao Commerce existente e jornadas críticas Playwright limitadas.
 
 MFA ou provedor externo de identidade só é incluído se o modelo de ameaças/deploy justificar.
 
@@ -228,7 +233,6 @@ Nenhum marco do roadmap autoriza implicitamente Kubernetes, Kafka, service mesh,
 
 ## Questões atuais em aberto
 
-- Qual menor fatia vertical da Fase 01 valida melhor a direção Java/Spring Boot sem excesso?
 - A v1.0 precisa de demonstração pública hospedada ou uma demonstração local reproduzível é o alvo de aceite?
 - Qual modelo de navegador/autenticação e profundidade de separação de roles atendem ao objetivo do portfólio?
 - Qual perfil de hardware/dados torna alegações de performance reproduzíveis para revisores?

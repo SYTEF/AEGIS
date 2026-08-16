@@ -2,7 +2,7 @@
 
 ## Governança do plano
 
-Este arquivo decompõe o [roadmap](docs/ROADMAP.md) em fases candidatas e revisáveis. Ele não concede autorização geral para implementá-las. **A Fase 01 está implementada localmente na branch `feat/phase-01-foundation` e aguarda o gate da CI remota e revisão humana; nenhuma fase posterior foi iniciada ou autorizada.** Cada nova fase exige aprovação humana explícita, confirmação de escopo e refinamento dos requisitos afetados antes do início do trabalho.
+Este arquivo decompõe o [roadmap](docs/ROADMAP.md) em fases candidatas e revisáveis. Ele não concede autorização geral para implementá-las. **A Fase 01 foi concluída, passou pela CI Linux/Windows e foi integrada à `main`. As decisões arquiteturais da Fase 02 estão aprovadas; a tarefa atual autoriza somente sua formalização documental, não a implementação.** Cada início de implementação exige aprovação humana explícita, confirmação de escopo e refinamento dos requisitos afetados.
 
 Regras:
 
@@ -17,7 +17,7 @@ Regras:
 
 ### Estado
 
-Implementada localmente e aguardando o gate da CI remota e revisão humana. A fundação produz um Jar executável sem serviços externos, expõe somente health/info operacionais, usa Problem Details e correlação segura, possui testes de unidade/componente/arquitetura e um workflow de CI Linux/Windows. Isso não autoriza nem inicia a Fase 02.
+Concluída, validada pela CI remota Linux/Windows e integrada à `main`. A fundação produz um Jar executável sem serviços externos, expõe somente health/info operacionais, usa Problem Details e correlação segura, possui testes de unidade/componente/arquitetura e um workflow de CI Linux/Windows.
 
 ### Objetivo
 
@@ -91,7 +91,7 @@ Mitigação: limitar esta fase a uma prova técnica vertical curta e iniciar a F
 
 ### Definição de Pronto (Definition of Done)
 
-- Os critérios de aceite e as verificações aplicáveis de [AGENTS.md](AGENTS.md#definition-of-done) passam.
+- Os critérios de aceite e as verificações aplicáveis da [Definição de Pronto de AGENTS.md](AGENTS.md#definição-de-pronto-definition-of-done) passam.
 - Build, verificações estáticas e testes esperados passam localmente e na CI.
 - A revisão de dependências/segurança não possui bloqueio crítico não resolvido.
 - README/API/arquitetura/documentação de execução local correspondem ao esqueleto executável.
@@ -99,55 +99,63 @@ Mitigação: limitar esta fase a uma prova técnica vertical curta e iniciar a F
 - Nenhum banco de dados, frontend ou funcionalidade não relacionada está presente.
 - As permissões do workflow são exatamente contents: read, salvo se um requisito revisado justificar mais.
 
-## Fase 02 — Núcleo do catálogo e prévia local de persistência (v0.2)
+## Fase 02 — Catalog Experience (v0.2)
 
 ### Objetivo
 
-Entregar a primeira fatia de valor real do produto por meio de uma API apoiada por PostgreSQL como **PRÉVIA DE DESENVOLVIMENTO LOCAL**, sem alegar mutação segura até que a Fase 03 conclua autenticação/RBAC.
+Entregar a primeira fatia vertical real do produto por meio do núcleo de Product apoiado por PostgreSQL 18.4 e de uma experiência React/TypeScript integrada, profissional e acessível, como **PRÉVIA DE DESENVOLVIMENTO LOCAL**. A fase não alega mutação segura até que a Fase 03 conclua autenticação/RBAC.
 
 ### Escopo
 
-- Refinar REQ-CAT-001 a REQ-CAT-012 em exemplos prontos para implementação, selecionando uma pequena sequência de fatias verticais.
-- Decidir a versão do PostgreSQL, a ferramenta de migração e a responsabilidade pelo schema por meio do ADR-002.
-- Decidir o contrato de concorrência (ETag ou versão explícita) por meio do ADR-007.
-- Implementar criação/leitura/atualização/desativação de categorias e produtos, invariantes de SKU/dinheiro/estoque, paginação/filtro/ordenação e histórico de produto.
+- Implementar o subconjunto aprovado de REQ-CAT-001 a REQ-CAT-012 em pequenas fatias verticais.
+- Aplicar o [ADR-002](docs/ADR/ADR-002-postgresql.md): PostgreSQL 18.4, schema `catalog`, Flyway, imagem Docker oficial com digest resolvido e fixado quando o Compose for criado, Docker Compose local e Testcontainers, sem H2.
+- Aplicar o [ADR-007](docs/ADR/ADR-007-etag-if-match-optimistic-concurrency.md): ETag/If-Match, HTTP 428 quando ausente, HTTP 412 quando stale e optimistic locking no banco.
+- Implementar criação/leitura/listagem/atualização/desativação de Product, paginação/filtro/ordenação e histórico de produto.
+- Implementar o backend mínimo de Category por POST, GET collection, GET individual e operação de desativação; não implementar PUT nem gestão visual de Category.
+- Normalizar o nome obrigatório de Category com Unicode NFC, trim, colapso de whitespace interno e limite 2–80; preservar essa forma para display e manter chave canônica separada em uppercase por `Locale.ROOT` para unicidade case-insensitive. Category nasce ACTIVE, não é reativada e sua segunda desativação é idempotente.
+- Exigir Category ACTIVE na criação e mudança de Product. Impedir desativação de Category referenciada por qualquer Product ACTIVE; permitir quando só houver Products INACTIVE. Operações concorrentes não podem confirmar Product ACTIVE associado a Category INACTIVE; a estratégia física de locking será escolhida/testada na implementação.
+- Aplicar as demais invariantes aprovadas: SKU imutável normalizado por trim externo/uppercase, 3–64 caracteres e allowlist `A-Z`, `0-9`, `.`, `_`, `-`; BRL com escala 2 e `NUMERIC(19,2)`; estoque inteiro não negativo; Name normalizado em Unicode NFC, trim e whitespace interno único com 3–120 caracteres; Description normalizada em NFC/LF, trim externo e preservação de whitespace interno/parágrafos com 1–2000 caracteres; Product criado ACTIVE e sem reativação.
 - Persistir a intenção de evento de domínio pertencente ao Catálogo atomicamente com estado/histórico do produto; nenhum broker ou publicador de Integração será introduzido ainda.
 - Introduzir o comportamento mínimo de auditoria append-only para alterações do catálogo sem construir a UI completa de auditoria.
-- Adicionar migrações de banco, dados locais determinísticos e uma dependência PostgreSQL local reproduzível.
-- Publicar OpenAPI executável para os endpoints implementados.
-- Adicionar logs estruturados, métricas/detalhes de health e correlação proporcionais aos caminhos de catálogo/banco de dados.
+- Adicionar migrações de banco, seed local opt-in/idempotente e uma dependência PostgreSQL local reproduzível.
+- Aplicar o [ADR-011](docs/ADR/ADR-011-openapi-contract.md) e publicar OpenAPI executável para os endpoints implementados.
+- Aplicar o [ADR-010](docs/ADR/ADR-010-frontend-architecture.md) para criar Application Shell, Products List, Create Product, Product Details e Edit Product integrados à API real.
+- Entregar states completos, responsividade, acessibilidade WCAG 2.2 AA nos fluxos críticos e o Design Quality Gate.
+- Reutilizar logs estruturados, Problem Details e correlação da Fase 01. Não introduzir Prometheus, Grafana, OpenTelemetry ou uma stack customizada de métricas nesta fase.
 
 ### Fora de Escopo
 
 - Autenticação/RBAC reais. Uma identidade de desenvolvimento claramente identificada pode apoiar testes locais, mas não é evidência de autenticação nem satisfaz critérios de aceite de autorização.
 - Imagens de produtos, mensageria, integração externa e Centro de Controle de Qualidade.
-- Frontend no navegador.
-- Categorias hierárquicas, expansão para múltiplas moedas, carrinho/pedido/pagamento.
+- Gestão visual completa de Category, categorias hierárquicas, múltiplas categorias por Product, expansão para múltiplas moedas, carrinho/pedido/pagamento.
+- Reativação de Product, reutilização de SKU, worker, RabbitMQ e publicação externa da outbox.
+- Dark mode completo, Bootstrap, Material UI, design system amplo, Storybook e Playwright.
 - Deploy em produção/alta disponibilidade.
 - Exposição pública/externa, hospedagem de demonstração compartilhada ou qualquer ambiente alcançável além do limite de desenvolvimento local/isolado aprovado.
 
 ### Dependências
 
 - Fase 01 concluída.
-- ADR-002 e ADR-007 aprovados.
-- Questões de cardinalidade de categoria, reutilização de SKU e moeda inicial resolvidas.
-- Docker ou alternativa PostgreSQL local reproduzível aprovada por ADR.
+- ADR-002, ADR-007, ADR-010 e ADR-011 aceitos.
 - Um Gate de Exposição Externa aplicável que falhe quando este perfil anterior à autenticação estiver configurado para hospedagem pública/compartilhada.
 
 ### Entregáveis
 
 - Domínio/módulo de Catálogo, limite público de aplicação/API e adaptador PostgreSQL.
-- Migrações versionadas e mecanismo local de seed/factory.
+- Migrações versionadas e mecanismo local de seed opt-in/idempotente.
 - Contratos implementados de OpenAPI, erros, paginação e concorrência.
 - Histórico do produto e fatos seguros de auditoria.
 - Suítes de unidade, componente, integração com banco de dados e API do Catálogo.
+- SPA React/TypeScript com shell, listagem, criação, detalhes, edição e desativação de Product.
+- Testes frontend de unidade/componente/integração/acessibilidade e smoke full-stack manual; Playwright permanece adiado.
+- Evidência do Design Quality Gate.
 - Documentação de execução/reset local e perfil de teste de banco de dados na CI.
 - Aviso persistente de prévia local e proteção de configuração indicando que a mutação do catálogo não está completa quanto à autorização.
 
 ### Critérios de Aceite
 
-1. Fluxos válidos de produto/categoria satisfazem o subconjunto aprovado de REQ-CAT-* e escritas inválidas são atômicas.
-2. SKU normalizado duplicado, preço/estoque negativos, categoria inválida e atualização obsoleta são rejeitados de forma determinística.
+1. Fluxos válidos de Product/Category satisfazem o subconjunto aprovado de REQ-CAT-* e escritas inválidas são atômicas.
+2. SKU fora da allowlist/tamanho, SKU normalizado duplicado, preço fora de BRL/escala, preço/estoque negativos, Category ausente/inativa, nome/descrição fora das regras normalizadas e atualização stale são rejeitados deterministicamente.
 3. Paginação repetida sobre dados inalterados é estável e o tamanho máximo de página é aplicado.
 4. Alterações materiais criam histórico preciso com ator, tempo e correlação.
 5. Restrições do banco protegem invariantes críticos e migrações funcionam a partir de um banco vazio.
@@ -155,13 +163,21 @@ Entregar a primeira fatia de valor real do produto por meio de uma API apoiada p
 7. A configuração local e de CI é reproduzível e documentada.
 8. O Gate de Exposição Externa comprova que o catálogo anterior à autenticação não pode ser configurado/implantado como ambiente externamente acessível.
 9. As partes de autorização de REQ-CAT-* permanecem explicitamente pendentes; nenhum teste com identidade de desenvolvimento é relatado como evidência de RBAC.
+10. A experiência Product integrada atende ao Design Quality Gate, incluindo estados, feedback, responsividade, teclado, foco, contraste e ausência de erros de console.
+11. Segunda desativação de Product não altera versão nem cria histórico/outbox adicional; reativação não existe.
+12. Frontend preserva a entrada do usuário e oferece recuperação explícita após HTTP 412.
+13. Nome duplicado de Category, nova associação a Category INACTIVE e desativação de Category usada por Product ACTIVE retornam conflito explícito com os códigos definidos; segunda desativação não cria efeito adicional.
+14. Corridas entre criação/mudança de Product e desativação de Category nunca confirmam Product ACTIVE associado a Category INACTIVE.
 
 ### Testes Esperados
 
 - Testes unitários/de propriedade/parametrizados para SKU, dinheiro, estoque, transições e mapeamentos.
 - Testes de componente/API de caminho feliz, limites, validação, paginação, concorrência e erro.
-- Testes de integração PostgreSQL para unicidade, transações, constraints e migrações.
+- Testes de integração PostgreSQL 18.4 para unicidade, transações, constraints e migrações.
+- Testes concorrentes para associação/mudança de Product versus desativação de Category, sem prescrever a estratégia física de locking no plano.
 - Verificações de qualidade de dados para histórico e rollback/ausência de estado parcial.
+- Testes frontend de unidade, componente, formulário, integração por boundary HTTP e acessibilidade.
+- Smoke full-stack manual da jornada list/create/details/edit/deactivate com PostgreSQL real.
 - Smoke básico de performance para regressões de paginação/consulta, ainda não como gate rígido de carga.
 - Testes de segurança para mass assignment, entrada de injeção e exposição de erros mesmo antes da autenticação completa.
 - Teste de configuração/arquitetura para o Gate de Exposição Externa; testes de autorização permanecem pendentes até a Fase 03.
@@ -170,24 +186,26 @@ Entregar a primeira fatia de valor real do produto por meio de uma API apoiada p
 
 - Uma API temporariamente não autenticada ser confundida com comportamento pronto para release.
 - Inflação do modelo de dados além dos padrões de acesso atuais.
-- Ambiguidade de moeda/categoria causar decisões incompatíveis de schema/API.
+- Estratégia de locking inadequada permitir violação concorrente entre o estado de Product e Category.
 - Atrito com containers de teste/Docker local.
+- Escopo simultâneo de backend e frontend crescer além das fatias verticais aprovadas.
 
 ### Definição de Pronto
 
 - Requisitos de catálogo aprovados e exemplos de contrato são rastreáveis a testes aprovados.
-- Build, lint/análise estática, verificações de unidade/componente/integração/API/migração passam.
+- Build, lint/análise estática, typecheck e verificações de unidade/componente/integração/API/contrato/migração passam para backend e frontend conforme aplicável.
 - Não há defeito de atualização perdida ou escrita parcial nos cenários cobertos.
 - Revisões de ameaças e telemetria estão atualizadas para o comportamento de banco/API.
 - OpenAPI, modelo de dados, arquitetura e documentação de execução local correspondem à implementação.
 - Evidências e limitações da release v0.2 estão registradas; não há alegação de uso multiusuário seguro.
 - Documentação e diagnósticos de UI/API identificam v0.2 como prévia local; a Fase 03 é um fechamento de segurança obrigatório antes da exposição.
+- O Design Quality Gate e o smoke full-stack manual passam; nenhum Playwright é declarado como evidência desta fase.
 
-## Fase 03 — Autenticação, RBAC e UI do Commerce (v0.3)
+## Fase 03 — Autenticação, RBAC e proteção do Commerce (v0.3)
 
 ### Objetivo
 
-Proteger operações de catálogo com identidade/RBAC reais e expor um fluxo mínimo e acessível do Commerce em React/TypeScript.
+Proteger as operações e a experiência existente do Commerce com identidade/RBAC reais, removendo a limitação de preview local somente após o Gate de Exposição Externa passar.
 
 ### Escopo
 
@@ -195,7 +213,7 @@ Proteger operações de catálogo com identidade/RBAC reais e expor um fluxo mí
 - Implementar REQ-AUTH-* aprovados, bootstrap de usuários/roles e matriz de permissões do catálogo.
 - Concluir todos os critérios de aceite de autorização deixados pendentes pela prévia local da Fase 02 e substituir o limite da identidade de desenvolvimento.
 - Aplicar autorização de endpoint, objeto e estado; auditar ações relevantes para segurança.
-- Criar um shell mínimo de frontend com login/gerenciamento de sessão e fluxos centrais de listagem/edição de produtos/categorias.
+- Integrar login/gerenciamento de sessão ao shell e aos fluxos de Product já entregues na Fase 02; adicionar a gestão visual de Category somente conforme escopo aprovado da fase.
 - Aplicar configuração segura do navegador, política de CSRF/CORS/armazenamento de token e fundamentos de acessibilidade.
 - Adicionar estratégia de build/lint/unidade/componente do frontend e jornadas críticas limitadas em Playwright.
 
@@ -210,13 +228,13 @@ Proteger operações de catálogo com identidade/RBAC reais e expor um fluxo mí
 
 - Fase 02 concluída e contratos de API estáveis.
 - Matriz de roles/permissões, bootstrap de administrador e requisitos de desativação/sessão aprovados.
-- ADR de autenticação e decisão de pacote/tooling do frontend.
+- ADR de autenticação; arquitetura/tooling frontend já definidos pelo ADR-010.
 - Baseline de navegadores suportados definida.
 
 ### Entregáveis
 
 - Módulo de Auth, APIs de catálogo protegidas e alterações de migração.
-- Experiência mínima do Commerce em React/TypeScript com formulários/navegação acessíveis.
+- Experiência existente do Commerce integrada à sessão/RBAC, com controles de UI coerentes sem tratá-los como proteção do servidor.
 - Eventos de auditoria de segurança e telemetria de autenticação/autorização.
 - OpenAPI/modelo de ameaças atualizados e identidades de demonstração local com dados sintéticos inertes.
 - Cobertura de unidade/componente/API/segurança/acessibilidade/Playwright.
@@ -423,7 +441,7 @@ Construir rastreabilidade confiável de release/teste/evidência e uma UI acess�
 - Identificadores confiáveis existentes de build/teste e seus relatórios.
 - Decisões aprovadas de schema de ingestão, atomicidade/limites de lote, identidade da fonte e retenção de evidência.
 - Convenções de IDs de requisito/teste e proveniência de artefatos de build.
-- Fundação de UI acessível da Fase 03.
+- Fundação de UI acessível da Fase 02, protegida por Auth/RBAC na Fase 03.
 
 ### Entregáveis
 
@@ -747,4 +765,4 @@ Consolidar o AEGIS em uma release de portfólio coerente, reproduzível e honest
 
 ## Próxima aprovação recomendada
 
-Revisar o diff, as evidências locais e o resultado da CI da **Fase 01** antes de autorizar commit, push, merge ou qualquer planejamento de implementação da Fase 02. Catálogo, banco de dados e frontend permanecem fora do escopo e exigem aprovação humana separada.
+Revisar e aprovar o fechamento documental da **Fase 02**, incluindo ADRs, contratos, requisitos, riscos e validações. Os blockers documentais de Category, normalização e versão PostgreSQL estão fechados; somente uma solicitação humana separada autoriza implementação, dependências, migrations, frontend, commit, push ou merge.

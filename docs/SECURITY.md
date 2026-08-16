@@ -2,7 +2,7 @@
 
 ## Finalidade e estado atual
 
-Segurança é uma restrição de design no AEGIS Commerce, no Centro de Controle de Qualidade e no Laboratório de Falhas. Este documento define a política inicial e o modelo de ameaças. A Fase 01 implementa somente controles da fundação HTTP descritos abaixo; não afirma que os controles futuros de autenticação, autorização ou negócio existem, nem que o sistema tem certificação para produção.
+Segurança é uma restrição de design no AEGIS Commerce, no Centro de Controle de Qualidade e no Laboratório de Falhas. Este documento define a política inicial e o modelo de ameaças. A Fase 01 implementa somente os controles da fundação HTTP descritos abaixo. A Fase 02 está aprovada como Local Development Preview, mas seus controles ainda não estão implementados; não existe Auth/RBAC nem certificação para produção.
 
 ### Controles implementados na Fase 01
 
@@ -13,6 +13,25 @@ Segurança é uma restrição de design no AEGIS Commerce, no Centro de Controle
 - Problem Details com detalhe seguro, path limitado sem query string/matrix parameters, timestamp UTC e sem stack trace ou classe de exceção no cliente;
 - logs JSON com evento HTTP mínimo, template de rota quando disponível ou path sanitizado, startup info desabilitado e sem usuário/path local, headers, cookies, corpos ou query string;
 - CI sem secrets, com `contents: read`, actions fixadas por SHA completo e somente build/testes.
+
+### Controles obrigatórios para a Local Development Preview da Fase 02
+
+Quando a Fase 02 for implementada:
+
+- backend e dev server frontend devem permanecer ligados a loopback por padrão;
+- uma tentativa de iniciar a prévia mutável em interface pública deve falhar com segurança, não apenas emitir warning;
+- a porta PostgreSQL publicada no host deve ser limitada a loopback;
+- a UI deve exibir aviso persistente de que autenticação/RBAC não existem;
+- não devem existir login, token, role ou usuário autenticado fictícios;
+- o dev server deve usar proxy local para `/api`; CORS permissivo não é um atalho aceitável;
+- DTOs explícitos, rejeição de campos desconhecidos e allowlists de ordenação/filtro devem impedir mass assignment;
+- normalização Unicode/whitespace aprovada para Category, Product Name e Product Description deve ocorrer no servidor antes da validação, unicidade e persistência, sem confiar na normalização do navegador;
+- Name e Description são conteúdo não confiável e devem ser renderizados como texto, sem HTML arbitrário;
+- ETag/If-Match e optimistic locking devem impedir lost update, mas não são autorização;
+- criação/mudança de Product concorrente com desativação de Category deve falhar de forma consistente antes de confirmar Product ACTIVE associado a Category INACTIVE;
+- structured logging, Problem Details e X-Correlation-ID da Fase 01 devem ser reutilizados sem registrar payloads, Description, SKU, preço ou configuração interna.
+
+Esses controles permitem apenas execução local/isolada. A Fase 02 não satisfaz REQ-AUTH-*, não passa o Gate de Exposição Externa e não pode ser descrita como production-ready.
 
 Achados de segurança são evidências para decisões de release. Varredura automatizada apoia, mas não substitui, modelagem de ameaças, revisão de código, testes de casos de abuso ou triagem humana.
 
@@ -95,7 +114,7 @@ Identidades de ingestão serviço-a-serviço/CI são distintas de sessões human
 
 A política de autorização deve ser testada com exemplos permitidos e negados. Ocultar botões é usabilidade, não controle de acesso.
 
-A matriz inicial de responsabilidades ADMIN, QUALITY_MANAGER, OPERATOR e VIEWER está definida em [REQUIREMENTS.md](REQUIREMENTS.md#matriz-conceitual-mínima-de-roles). Antes da autenticação real, a mutação do catálogo é apenas uma prévia de desenvolvimento local e a exposição externa é uma falha bloqueante de segurança.
+A matriz inicial de responsabilidades ADMIN, QUALITY_MANAGER, OPERATOR e VIEWER está definida em [REQUIREMENTS.md](REQUIREMENTS.md#matriz-conceitual-mínima-de-roles). Antes da autenticação real, a mutação do catálogo é apenas uma prévia de desenvolvimento local; exposição externa ou falha do bloqueio de bind são achados P0 e bloqueios críticos.
 
 ## Validação de entrada e segurança da saída
 
@@ -256,7 +275,8 @@ A tabela usa STRIDE como estímulo, não como alegação de completude.
 | --- | --- | --- | --- | --- |
 | Spoofing | Autenticação | credential stuffing ou token roubado | hash adaptativo, erros genéricos, limite de taxa, expiração/revogação, TLS, auditoria | MFA e mecanismo de identidade não decididos |
 | Spoofing | Ingestão de qualidade | fonte de CI forjada informa testes aprovados | identidade de serviço delimitada, idempotência de fonte/execução, proveniência do build, auditoria | maturidade de assinatura/atestação de artefato em aberto |
-| Tampering | Catálogo | mutação não autorizada de preço/estoque | RBAC/verificações de objeto, validação, concorrência, histórico/auditoria | matriz de roles não finalizada |
+| Tampering | Catálogo | mutação não autorizada de preço/estoque | Fase 02 somente em loopback, validação, concorrência e histórico; RBAC/verificações de objeto entram na Fase 03 | até Auth/RBAC, qualquer exposição externa é P0 e bloqueante |
+| Tampering | Relação Product/Category | corrida associa Product ACTIVE enquanto Category é desativada | invariável transacional, precondições ETag/If-Match, constraints/locking proporcionais e teste concorrente PostgreSQL | mecanismo físico de locking deve ser escolhido e comprovado na implementação |
 | Tampering | Política de qualidade | pesos/gates alterados para aprovar release | permissão separada, versionamento, revisão, auditoria, avaliação histórica imutável | segregação em portfólio de uma pessoa |
 | Repúdio | Release | aprovador nega exceção/decisão | decisão atribuível e imutável e snapshot de evidência | não repúdio/assinatura mais forte no futuro |
 | Divulgação de informação | Erros/telemetria | token, SQL ou dados pessoais em logs/evidências | campos estruturados permitidos, testes de redação, erros seguros, acesso/retenção | padrões de ferramentas de terceiros exigem revisão |
