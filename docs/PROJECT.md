@@ -76,7 +76,7 @@ As personas podem ser desempenhadas pela mesma pessoa nas primeiras versões. A 
 
 - Estratégia de testes automatizados e exploratórios.
 - Segurança by Design, Observabilidade by Design e Testabilidade by Design.
-- Reprodutibilidade local e Gates de Qualidade de CI/CD quando a implementação começar.
+- Reprodutibilidade local e Gates de Qualidade de CI/CD iniciados pela fundação executável da Fase 01 e amadurecidos incrementalmente.
 - Documentação que evolui com o comportamento.
 
 ## Fora de escopo
@@ -153,13 +153,13 @@ Premissas devem ser validadas durante a implementação. Premissas frágeis ou r
 | Arquitetura | O limite de Monólito Modular é proporcional. RabbitMQ e MinIO são adiados até que os requisitos de integração/mídia os justifiquem; o worker pode permanecer na mesma base de código. Nenhuma tecnologia proibida é planejada por padrão. |
 | QA | Testabilidade, testes em camadas, rastreabilidade, evidências, ciclo de defeito, testes não funcionais e integridade dos gates críticos estão presentes nos requisitos e na arquitetura, em vez de serem anexados apenas à CI. |
 | Segurança | A fundação cobre RBAC, autorização de objeto, uploads hostis, secrets, proveniência de evidências, integridade da política de release e contenção do Laboratório de Falhas. Os designs concretos de identidade/sessão e retenção permanecem deliberadamente abertos. |
-| DevOps | Um caminho local-first está planejado e evita dependência de Kubernetes/nuvem. Ainda não existe ambiente executável; por isso, a reprodutibilidade é um critério de aceite da Fase 01, não uma capacidade atual. |
+| DevOps | A Fase 01 introduziu um backend local executável sem Kubernetes/nuvem, com Maven Wrapper, Jar e endpoints operacionais. A implementação está validada localmente e ainda aguarda o gate da CI remota. |
 | Observabilidade | Fluxos críticos definem logs, métricas, traces, IDs, semântica de health, dashboards, alertas e um caminho de investigação para QA. Backends/armazenamento e retenção de telemetria não estão resolvidos. |
 | Red Team | As premissas mais frágeis são proveniência confiável das fontes de qualidade, calibração realista da pontuação, segregação suficiente de funções para uma pessoa, negação confiável do Laboratório de Falhas em produção, recursos locais modestos e representatividade do mock externo. |
 
 ### Decisões
 
-- A fundação é exclusivamente documental; não alega implementação, certificação de segurança ou prontidão para produção.
+- A fundação combina a documentação oficial com um backend mínimo executável da Fase 01; isso não alega certificação de segurança, prontidão para produção nem conclusão do gate remoto.
 - Começar como Monólito Modular conforme o [ADR-001](ADR/ADR-001-modular-monolith.md) aceito, com APIs explícitas dos módulos e PostgreSQL como fonte transacional da verdade pretendida.
 - Introduzir MinIO para necessidades aprovadas de imagem e RabbitMQ para integração externa confiável apenas em suas respectivas fases aprovadas.
 - Manter a política de qualidade versionada e explicável; regras de bloqueio crítico prevalecem sobre a Pontuação de Qualidade.
@@ -178,7 +178,7 @@ Premissas devem ser validadas durante a implementação. Premissas frágeis ou r
 
 ### Recomendações
 
-- Obter autorização humana separada somente para a Fase 01, usando o ADR-001 aceito e a baseline aprovada de JDK 25 LTS / Spring Boot 4.1.x / Maven.
+- Concluir o gate da CI remota e a revisão humana da Fase 01 antes de autorizar commit/merge ou qualquer trabalho da Fase 02.
 - Identificar com destaque métricas futuras/preliminares em toda UI implementada e saída de release até que sejam calibradas.
 - Validar proveniência de evidências e identidade de build antes de implementar qualquer pontuação.
 - Finalizar autenticação, matriz de roles, retenção e autoridade de exceções imediatamente antes das respectivas fases.

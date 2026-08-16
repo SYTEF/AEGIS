@@ -33,13 +33,86 @@ O AEGIS começa como um **Monólito Modular (Modular Monolith)**, formalmente ac
 
 As tecnologias futuras preferenciais são React e TypeScript, Java e Spring Boot, PostgreSQL, RabbitMQ, MinIO, Playwright, k6, Docker Compose, GitHub Actions, OpenTelemetry, Prometheus e Grafana. Elas não são implementadas por esta fundação e continuam sujeitas a Registros de Decisão Arquitetural (Architecture Decision Records — ADRs).
 
-A **baseline de planejamento** aprovada para a futura Fase 01 é JDK 25 LTS, Spring Boot 4.1.x, Maven, Jar executável, coordenadas Maven `io.github.sytef:aegis` e pacote-base `io.github.sytef.aegis`. O GitHub Actions começará com `permissions: contents: read`. Essas decisões não significam que a Fase 01 foi implementada nem autorizada a começar.
+A fundação executável da Fase 01 usa JDK 25 LTS, Spring Boot 4.1.0, Maven 3.9.16 por meio do Maven Wrapper, Jar executável, coordenadas Maven `io.github.sytef:aegis` e pacote-base `io.github.sytef.aegis`. O workflow de CI usa `permissions: contents: read` e está configurado para validar o build em Linux e Windows; a Fase 01 permanece aguardando o gate da execução remota.
 
 Kubernetes, Kafka, service mesh, event sourcing, CQRS, blockchain, Elasticsearch e microservices estão explicitamente excluídos, a menos que um problema mensurável os justifique.
 
 ## Estado do repositório
 
-Este repositório está atualmente na **v0.1 — Fundação**. Ele contém apenas a documentação oficial de produto e engenharia. Ainda não há frontend, backend, banco de dados, suíte de testes executável ou infraestrutura.
+Este repositório está atualmente na **v0.1 — Fundação**. Ele contém a documentação oficial e um backend mínimo executável com health, info seguro, Problem Details, correlação, logging estruturado, testes e CI. Ainda não há frontend, banco de dados, mensageria, object storage, autenticação nem comportamento de negócio do catálogo.
+
+## Execução local
+
+### Pré-requisitos
+
+- JDK 25 LTS disponível em `JAVA_HOME` e no `PATH`.
+- Acesso à internet na primeira execução para que o Maven Wrapper obtenha a distribuição e as dependências verificadas.
+- Nenhum banco de dados, container ou serviço externo é necessário na Fase 01.
+
+O Maven Wrapper fixa Maven 3.9.16 e valida o checksum SHA-256 da distribuição. Não é necessário instalar Maven separadamente.
+
+### Build e testes
+
+Windows:
+
+```powershell
+.\mvnw.cmd verify
+```
+
+Linux/macOS:
+
+```bash
+./mvnw verify
+```
+
+Se um checkout em sistema POSIX não preservar a permissão de execução do script, execute uma única vez `chmod +x mvnw` antes dos comandos acima.
+
+### Executar durante o desenvolvimento
+
+Windows:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Linux/macOS:
+
+```bash
+./mvnw spring-boot:run
+```
+
+### Executar o Jar
+
+Depois de `verify`:
+
+```bash
+java -jar target/aegis-0.1.0-SNAPSHOT.jar
+```
+
+A aplicação escuta por padrão somente em `127.0.0.1:8080`.
+
+| Endpoint | Finalidade |
+| --- | --- |
+| `http://127.0.0.1:8080/actuator/health/liveness` | Vida do processo |
+| `http://127.0.0.1:8080/actuator/health/readiness` | Prontidão para receber tráfego |
+| `http://127.0.0.1:8080/actuator/info` | Nome e versão do serviço/build e SHA opcional |
+
+Para expor o commit em `/actuator/info`, defina `AEGIS_COMMIT_SHA` com 7–64 caracteres hexadecimais. Um valor ausente ou inválido é omitido. Somente os endpoints `health` e `info` são expostos.
+
+Windows/PowerShell:
+
+```powershell
+$env:AEGIS_COMMIT_SHA = git rev-parse HEAD
+.\mvnw.cmd spring-boot:run
+```
+
+Linux/macOS:
+
+```bash
+AEGIS_COMMIT_SHA="$(git rev-parse HEAD)" ./mvnw spring-boot:run
+```
+
+Encerre a aplicação no terminal com `Ctrl+C`. Se a inicialização informar que a porta 8080 já está em uso, encerre o processo anterior antes de tentar novamente. No Windows, `Get-NetTCPConnection -LocalPort 8080 -State Listen` ajuda a identificar a porta ocupada; em Linux/macOS, use a ferramenta disponível no sistema, como `lsof -i :8080` ou `ss -ltnp`.
 
 ## Mapa da documentação
 
@@ -79,9 +152,9 @@ Os identificadores são estáveis e legíveis por humanos, por exemplo `REQ-CAT-
 
 ## Restrições atuais
 
-- A documentação é a autoridade para a fundação, mas detalhes de implementação podem evoluir por meio de ADRs.
+- A documentação e os contratos executáveis da Fase 01 são a autoridade para a fundação; detalhes posteriores podem evoluir por meio de requisitos, testes e ADRs.
 - Os valores-limite nas políticas de qualidade, segurança e performance são propostas iniciais e devem ser calibrados com evidências.
-- As instruções de execução local serão adicionadas quando os primeiros componentes executáveis existirem.
+- A Fase 01 não implementa API pública de negócio sob `/api/v1`; seus endpoints são exclusivamente operacionais.
 
 ## Metas de entrega
 

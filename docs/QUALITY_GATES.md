@@ -38,6 +38,12 @@ Antes da v0.7, a revisão de release usa evidências atuais, gates críticos, ri
 
 Antes de o Centro de Controle de Qualidade existir, NOT_APPLICABLE nesta tabela é uma regra documental de maturidade, não um registro de runtime fabricado. Quando uma API de resumo persistir aplicabilidade, deverá conter ator/versão autorizados da política e referência de auditoria.
 
+### Gate aplicável à Fase 01
+
+Para a fundação executável, a evidência exigida é: Maven Wrapper fixado e íntegro, Maven Enforcer para Java/Maven aprovados, `mvnw verify` verde, testes de contexto/unidade/componente/HTTP, regra ArchUnit, Jar executável, smoke manual dos endpoints operacionais, revisão da árvore de dependências, `git diff --check` e revisão de segurança/documentação. O workflow de CI deve repetir `verify` em Linux e Windows com privilégio mínimo; configuração sem execução remota bem-sucedida não satisfaz o gate.
+
+Não há Pontuação de Qualidade, Classificação de Risco nem recomendação automática nesta fase. Varredura automatizada de secrets/dependências, SBOM, assinatura e proveniência de artefato ainda não são gates implementados; a revisão de dependências e secrets é manual até que ferramenta e política sejam aprovadas.
+
 ## Gates progressivos
 
 ### 1. Gate de Pull Request

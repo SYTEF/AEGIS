@@ -2,7 +2,17 @@
 
 ## Finalidade e estado atual
 
-Segurança é uma restrição de design no AEGIS Commerce, no Centro de Controle de Qualidade e no Laboratório de Falhas. Este documento define a política inicial e o modelo de ameaças; não afirma que controles de segurança foram implementados nem que o futuro sistema tem certificação para produção.
+Segurança é uma restrição de design no AEGIS Commerce, no Centro de Controle de Qualidade e no Laboratório de Falhas. Este documento define a política inicial e o modelo de ameaças. A Fase 01 implementa somente controles da fundação HTTP descritos abaixo; não afirma que os controles futuros de autenticação, autorização ou negócio existem, nem que o sistema tem certificação para produção.
+
+### Controles implementados na Fase 01
+
+- bind local padrão em `127.0.0.1`, JMX desabilitado e ausência de credenciais ou secrets reais no repositório;
+- exposição do Actuator limitada a `health` e `info`, com respostas de health sem componentes ou detalhes internos;
+- `info` construído por allowlist e commit SHA opcional validado, sem dump de environment, host, PID, caminhos, propriedades ou argumentos;
+- correlação limitada por allowlist/tamanho, substituição segura de valores inválidos ou múltiplos e limpeza/restauração do MDC em `finally`;
+- Problem Details com detalhe seguro, path limitado sem query string/matrix parameters, timestamp UTC e sem stack trace ou classe de exceção no cliente;
+- logs JSON com evento HTTP mínimo, template de rota quando disponível ou path sanitizado, startup info desabilitado e sem usuário/path local, headers, cookies, corpos ou query string;
+- CI sem secrets, com `contents: read`, actions fixadas por SHA completo e somente build/testes.
 
 Achados de segurança são evidências para decisões de release. Varredura automatizada apoia, mas não substitui, modelagem de ameaças, revisão de código, testes de casos de abuso ou triagem humana.
 
@@ -98,6 +108,7 @@ A matriz inicial de responsabilidades ADMIN, QUALITY_MANAGER, OPERATOR e VIEWER 
 - Tratar descrições/nomes de produto como conteúdo não confiável mesmo quando inseridos por usuários autenticados.
 - Evitar desserialização insegura e ativação de tipos polimórficos vindos da entrada.
 - Contratos de erro expõem códigos seguros e estáveis e IDs de correlação, nunca stack traces, SQL, hostnames ou secrets.
+- Requisições rejeitadas pelo servidor HTTP antes da cadeia Servlet/Spring ficam fora das garantias de Problem Details e correlação da aplicação; a resposta mínima do container não deve revelar versão, stack trace ou detalhe interno.
 - Validar schema de mensagem/evento e ingestão de qualidade, além da proveniência da fonte/build; não confiar em alegações do payload da CI somente porque estão bem formadas.
 
 ## Upload seguro e processamento de mídia
@@ -225,7 +236,7 @@ A auditoria de alterações de negócio do catálogo pode ser uma projeção eve
 
 ## Segurança da cadeia de suprimentos e CI/CD
 
-Quando a implementação começar:
+Na implementação corrente e em sua evolução:
 
 - fixar versões de ferramentas/actions em referências imutáveis ou controladas quando viável;
 - revisar necessidade, proveniência, manutenção e licença de dependências;

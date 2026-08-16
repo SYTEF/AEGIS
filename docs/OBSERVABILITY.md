@@ -4,7 +4,7 @@
 
 Observabilidade permite que profissionais de engenharia expliquem o comportamento do sistema a partir dos sinais emitidos. Para o AEGIS, também é uma capacidade de Engenharia de Qualidade: testes e evidências de release devem ajudar uma investigação a atravessar limites de HTTP, banco de dados, mensagem, worker e downstream sem adivinhação.
 
-Este documento define requisitos futuros de instrumentação. OpenTelemetry, Prometheus e Grafana são preferenciais, mas serão introduzidos incrementalmente quando existirem componentes executáveis. Sua adoção continua sujeita a planejamento proporcional de implementação.
+Este documento define a baseline atual e requisitos futuros de instrumentação. A Fase 01 implementa logs JSON, correlação HTTP/MDC, liveness, readiness e metadados seguros de build. OpenTelemetry, Prometheus e Grafana permanecem não implementados e serão introduzidos incrementalmente apenas quando autorizados e úteis.
 
 ## Princípios
 
@@ -48,6 +48,8 @@ Um ID de correlação representa um fluxo lógico de negócio/diagnóstico e pod
 - não codificar usuário, ambiente ou secret no ID;
 - registrá-lo como campo estruturado, não apenas no texto da mensagem.
 
+Na Fase 01, exatamente um valor que corresponda a `^[A-Za-z0-9._-]{1,128}$` é preservado sem `trim`; ausência, invalidade ou multiplicidade gera um UUID v4. Para requisições aceitas pelo conector e encaminhadas à cadeia Servlet/Spring, o valor efetivo é devolvido no header, mantido no MDC durante o dispatch e incluído em Problem Details. O contexto é restaurado ou removido em `finally`. Requisições malformadas rejeitadas antes do filtro ficam fora dessa garantia. Propagação assíncrona não existe nesta fase.
+
 ### IDs de trace e span
 
 O contexto de trace do OpenTelemetry representa um caminho causal de execução. Contexto recebido, compatível e confiável, pode continuar após validação; caso contrário, novo contexto é criado. Publicação e consumo assíncronos usam semântica de span/link de mensageria para que atrasos e retries sejam visíveis. IDs de trace são retornados ou vinculados a evidências diagnósticas quando seguro.
@@ -69,7 +71,7 @@ IDs de correlação e trace são ponteiros diagnósticos, não prova de que uma 
 
 ## Logs estruturados
 
-O formato preferencial é JSON em ambientes compartilhados e saída estruturada legível por humanos localmente. Campos comuns:
+O runtime da Fase 01 usa o formato JSON estruturado nativo do Spring Boot em todos os ambientes para manter o contrato observável simples. A evolução poderá adotar uma saída local alternativa somente se preservar campos e testes. Campos comuns:
 
 - timestamp UTC, severidade e nome/código estável do evento;
 - serviço/processo, módulo, ambiente e versão/build;
@@ -89,6 +91,8 @@ Níveis de log:
 
 Nomes estáveis de evento são preferíveis à análise de texto, por exemplo catalog.product.updated, integration.delivery.retry_scheduled e quality.gate.failed.
 
+O evento implementado `http.request.completed` inclui método, template de rota resolvido quando disponível — ou fallback de path limitado e sanitizado —, status, duração em milissegundos e `correlationId` pelo MDC. Query string, matrix parameters e caracteres de controle são removidos pela mesma política usada em Problem Details. O startup info que revelaria usuário e diretório local está desabilitado. Erros inesperados registram classificação, tipo e primeiro frame estrutural pertencente ao AEGIS quando disponível, sem mensagem, causa, payload ou stack trace bruto. Os testes verificam que path local, query string, matrix parameters, valor de correlação rejeitado e secrets sintéticos não aparecem nos logs capturados, e que origens distintas permanecem diagnosticáveis.
+
 Nunca registrar senhas, tokens/cookies, headers de autorização, URLs assinadas, secrets, corpos completos de solicitação/resposta, conteúdo binário recebido, parâmetros SQL brutos com dados ou dados pessoais desnecessários. A redação é baseada em allowlist e testada. Caracteres de controle são sanitizados para impedir injeção em log.
 
 ## Métricas
@@ -100,7 +104,7 @@ Métricas usam labels estáveis e de baixa cardinalidade. Dimensões de produto,
 - contagem de solicitações, histograma de duração e contagem de erros por template de rota/método/classe de status;
 - solicitações ativas e solicitações rejeitadas/limitadas;
 - contagens de negação de validação, autenticação e autorização, apenas com labels seguros;
-- saturação de JVM/processo/runtime quando o backend existir.
+- saturação de JVM/processo/runtime do backend.
 
 ### Catálogo/dados
 
@@ -169,6 +173,8 @@ A política de amostragem deve preservar erros e experimentos críticos de relea
 | Detalhe de dependência | Estado diagnóstico autorizado de banco/broker/storage/downstream | Não é exposto publicamente com hostnames, credenciais ou detalhes internos |
 
 A resposta pública de health é mínima. A política de readiness da API de Catálogo deve distinguir a necessidade essencial do banco da degradação assíncrona de broker/downstream: falha downstream não deve desabilitar desnecessariamente leituras/escritas do catálogo quando a outbox puder acumular com segurança. A readiness do worker depende dos limites de broker/banco necessários.
+
+Na Fase 01, liveness e readiness retornam somente `UP` porque não existem dependências externas nem migrações. Ambas usam a porta HTTP da aplicação. Outros endpoints do Actuator não são expostos.
 
 Atualização da fonte de evidência de qualidade é status de qualidade, não liveness do processo.
 

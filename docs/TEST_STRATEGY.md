@@ -29,6 +29,12 @@ Testes não devem ser excluídos, pulados, colocados em quarentena, escondidos p
 11. Não usar pontuação agregada para ocultar falha crítica.
 12. Refinar continuamente a cobertura usando defeitos, telemetria, padrões de alteração e riscos que escaparam.
 
+## Baseline executável da Fase 01
+
+A fundação atual é validada por `./mvnw verify` ou `.\mvnw.cmd verify`. A suíte cobre bootstrap do contexto, contratos HTTP reais em porta aleatória, liveness/readiness, allowlist e matriz negativa do Actuator, `info`, Problem Details para 400/404/405/406/415/500, limites e entradas adversariais do `X-Correlation-ID`, presença do header, MDC, isolamento entre solicitações, concorrência determinística, `Error`, redispatch, resposta committed, sanitização de path e campos seguros/diagnosticáveis dos logs estruturados. Controllers que exercitam erros existem somente no escopo de testes.
+
+Testes unitários exercitam a política pura de correlação e a contribuição segura de build. Testes de componente/integração exercitam o filtro e o servidor HTTP real. A regra ArchUnit atual protege apenas uma direção útil e existente: `foundation.correlation` não depende de Spring, Jakarta nem `foundation.web`. Não existe meta percentual artificial de cobertura, retry automático ou `sleep` arbitrário.
+
 ## Atividades de qualidade no ciclo de vida
 
 | Etapa | Atividades | Evidências |
@@ -234,7 +240,7 @@ Charters com prazo focam ambiguidade, fluxos, recuperação de erros e interaç�
 
 ## Verificações estáticas e revisão
 
-Quando houver código, verificações rápidas de pull request devem incluir compilação/verificação de tipos, formatação/lint, testes de unidade/componente, varredura de dependências/secrets e compatibilidade de contrato conforme aplicável. A revisão examina correção, clareza, testabilidade, segurança, telemetria, migração/recuperação e documentação — não apenas percentual de cobertura.
+As verificações atuais incluem Maven Enforcer, compilação, testes de unidade/componente/integração e ArchUnit. O workflow de CI está configurado para executar `verify` em Linux e Windows; o gate só fica satisfeito depois da execução remota bem-sucedida. Formatação/lint dedicado, varredura automatizada de dependências/secrets e compatibilidade de contrato ainda não foram introduzidos; tornam-se gates quando uma ferramenta e política forem aprovadas. A revisão examina correção, clareza, testabilidade, segurança, telemetria, migração/recuperação e documentação — não apenas percentual de cobertura.
 
 ## Ambientes de teste
 

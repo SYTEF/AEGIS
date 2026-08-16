@@ -2,7 +2,7 @@
 
 ## Estado e contexto
 
-Este documento define a arquitetura inicial pretendida. Ele não afirma que os componentes já existem. A direção de Monólito Modular (Modular Monolith) está aceita no [ADR-001](ADR/ADR-001-modular-monolith.md). Alterações materiais exigem análise de impacto e, quando difíceis de reverter ou amplamente consequentes, um [Registro de Decisão Arquitetural](ADR/README.md).
+Este documento define a arquitetura inicial e distingue a fundação já executável das capacidades futuras. A Fase 01 implementa somente o bootstrap HTTP do backend, endpoints operacionais, tratamento seguro de erros, correlação, logging estruturado, testes e CI. Os módulos de negócio, frontend e componentes externos permanecem conceituais. A direção de Monólito Modular (Modular Monolith) está aceita no [ADR-001](ADR/ADR-001-modular-monolith.md). Alterações materiais exigem análise de impacto e, quando difíceis de reverter ou amplamente consequentes, um [Registro de Decisão Arquitetural](ADR/README.md).
 
 O AEGIS deve oferecer suporte a um fluxo real de catálogo e a um fluxo de qualidade/release, mantendo-se compreensível e reproduzível localmente. O principal risco arquitetural é adicionar complexidade de sistemas distribuídos pela aparência no portfólio, em vez de atender a uma necessidade do produto. O estilo inicial é, portanto, um **Monólito Modular**, com mensageria assíncrona apenas em limites que se beneficiem de desacoplamento e recuperação.
 
@@ -288,29 +288,31 @@ O mock deve simular resultados realistas, mas não pode sustentar alegações de
 
 ## Direção de deploy e execução local
 
-Nenhum runtime é criado na fase de fundação. Quando a implementação começar, o formato pretendido para desenvolvimento é:
+O runtime mínimo da Fase 01 é um Jar executável Spring Boot, restrito por padrão a 127.0.0.1:8080 e reproduzível pelo Maven Wrapper. A evolução pretendida para desenvolvimento é:
 
-- frontend e backend executáveis diretamente para desenvolvimento rápido;
+- backend executável diretamente; o frontend só será adicionado em fase autorizada;
 - PostgreSQL e, somente em suas fases, RabbitMQ e MinIO fornecidos por Docker Compose;
 - um comando/caminho de bootstrap documentado, health checks e dados seed determinísticos;
 - nenhuma exigência de Kubernetes ou conta em nuvem;
 - worker de integração inicializável independentemente quando a integração assíncrona existir.
 
-### Baseline de planejamento da Fase 01
+### Baseline implementada da Fase 01
 
-A baseline futura aprovada é:
+A baseline implementada é:
 
 | Preocupação | Decisão |
 | --- | --- |
 | JDK | 25 LTS |
-| Framework | Spring Boot 4.1.x |
-| Build | Maven |
+| Framework | Spring Boot 4.1.0 |
+| Build | Maven 3.9.16 pelo Maven Wrapper 3.3.4 |
 | Empacotamento | Jar executável |
 | Coordenadas Maven | io.github.sytef:aegis |
 | Pacote-base | io.github.sytef.aegis |
 | CI | GitHub Actions com permissions: contents: read; permissões adicionais exigem justificativa explícita |
 
-A Fase 01 permanece limitada a um esqueleto de aplicação executável, liveness/readiness/info, erros Problem Details, IDs de correlação limitados, validação de unidade/componente e CI de privilégio mínimo. Não contém frontend, PostgreSQL, RabbitMQ, MinIO, CRUD/lógica de negócio do catálogo, autenticação real, Motor de Qualidade ou Grafana. Os contratos detalhados estão em [API_SPEC.md](API_SPEC.md#contratos-operacionais-da-fase-01) e [PLANS.md](../PLANS.md#fase-01--fundação-backend-executável-mínima).
+A Fase 01 está limitada a um esqueleto de aplicação executável, liveness/readiness/info, erros Problem Details, IDs de correlação limitados, logging JSON, validação de unidade/componente/integração e CI de privilégio mínimo. Não contém frontend, PostgreSQL, RabbitMQ, MinIO, CRUD/lógica de negócio do catálogo, autenticação real, Motor de Qualidade ou Grafana. Os contratos detalhados estão em [API_SPEC.md](API_SPEC.md#contratos-operacionais-da-fase-01) e [PLANS.md](../PLANS.md#fase-01--fundação-backend-executável-mínima).
+
+O código físico da fundação usa o pacote-base `io.github.sytef.aegis`: `foundation.correlation` contém a política pura de ID de correlação; `foundation.web` integra essa política ao HTTP, ao MDC e aos Problem Details e centraliza a representação segura de paths; `foundation.info` contribui somente metadados permitidos ao Actuator. Uma regra ArchUnit impede que `foundation.correlation` dependa de Spring, Jakarta ou `foundation.web`; a direção inversa é permitida. Nenhum pacote de domínio vazio foi criado.
 
 ## Regras de evolução
 
@@ -319,7 +321,7 @@ Um módulo só pode ser considerado para extração se evidências mostrarem uma
 ## Decisões em aberto
 
 - Mecanismo de autenticação/sessão e biblioteca de identidade.
-- Estrutura de projetos backend/frontend e ferramenta de imposição da modularidade.
+- Estrutura do futuro frontend e organização física dos módulos de negócio; a fundação do backend e a primeira regra ArchUnit já estão definidas.
 - Representação de concorrência otimista (campo version versus semântica HTTP ETag).
 - Estratégia de schema físico do banco e ferramenta de migração.
 - Política de object storage e retenção de evidências.

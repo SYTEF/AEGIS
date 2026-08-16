@@ -2,7 +2,7 @@
 
 ## Governança do plano
 
-Este arquivo decompõe o [roadmap](docs/ROADMAP.md) em fases candidatas e revisáveis. Ele não concede autorização geral para implementá-las. **Nenhuma fase deste documento foi iniciada ou implementada.** Cada fase exige aprovação humana explícita, confirmação de escopo e refinamento dos requisitos afetados antes do início do trabalho.
+Este arquivo decompõe o [roadmap](docs/ROADMAP.md) em fases candidatas e revisáveis. Ele não concede autorização geral para implementá-las. **A Fase 01 está implementada localmente na branch `feat/phase-01-foundation` e aguarda o gate da CI remota e revisão humana; nenhuma fase posterior foi iniciada ou autorizada.** Cada nova fase exige aprovação humana explícita, confirmação de escopo e refinamento dos requisitos afetados antes do início do trabalho.
 
 Regras:
 
@@ -14,6 +14,10 @@ Regras:
 - Criar ADRs imediatamente antes de decisões importantes, não como documentação especulativa.
 
 ## Fase 01 — Fundação backend executável mínima
+
+### Estado
+
+Implementada localmente e aguardando o gate da CI remota e revisão humana. A fundação produz um Jar executável sem serviços externos, expõe somente health/info operacionais, usa Problem Details e correlação segura, possui testes de unidade/componente/arquitetura e um workflow de CI Linux/Windows. Isso não autoriza nem inicia a Fase 02.
 
 ### Objetivo
 
@@ -743,6 +747,4 @@ Consolidar o AEGIS em uma release de portfólio coerente, reproduzível e honest
 
 ## Próxima aprovação recomendada
 
-A baseline de planejamento está agora fixada: JDK 25 LTS, Spring Boot 4.1.x, Maven, Jar executável, io.github.sytef:aegis, pacote-base io.github.sytef.aegis, ADR-001 aceito e GitHub Actions com privilégio mínimo (contents: read).
-
-Essas decisões não autorizam implementação. Aprove **somente a Fase 01** por meio de uma instrução humana explícita e separada depois que a documentação do Gate 01 passar. A Fase 01 deve permanecer pequena o suficiente para uma revisão focada. Se a discussão se expandir para catálogo/banco/frontend, divida o trabalho em vez de ampliar silenciosamente a fase.
+Revisar o diff, as evidências locais e o resultado da CI da **Fase 01** antes de autorizar commit, push, merge ou qualquer planejamento de implementação da Fase 02. Catálogo, banco de dados e frontend permanecem fora do escopo e exigem aprovação humana separada.

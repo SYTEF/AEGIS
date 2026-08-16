@@ -2,7 +2,7 @@
 
 ## Estado
 
-Este é um contrato em nível de design, não uma OpenAPI executável nem uma API implementada. Detalhes dos endpoints podem ser refinados durante sua fase do roadmap, mas alterações devem permanecer alinhadas aos [requisitos](REQUIREMENTS.md), à política de segurança e às regras de compatibilidade. Um documento OpenAPI executável deve tornar-se a fonte do contrato quando a implementação do backend começar.
+Os contratos de negócio deste documento permanecem em nível de design e ainda não possuem OpenAPI executável. Somente os contratos operacionais da Fase 01 estão implementados. Detalhes dos demais endpoints podem ser refinados durante sua fase do roadmap, mas alterações devem permanecer alinhadas aos [requisitos](REQUIREMENTS.md), à política de segurança e às regras de compatibilidade. Um documento OpenAPI executável deve tornar-se a fonte do contrato quando a primeira API pública de negócio for implementada.
 
 ## Convenções
 
@@ -15,18 +15,18 @@ Este é um contrato em nível de design, não uma OpenAPI executável nem uma AP
 - IDs: strings opacas; clientes não devem inferir ordenação ou tipo a partir delas.
 - Dinheiro: { "amount": "19.90", "currency": "BRL" }; valores decimais são serializados como strings para preservar a precisão.
 - Campos desconhecidos da solicitação: rejeitados em comandos sensíveis para segurança, salvo se uma política explícita de compatibilidade os permitir.
-- Correlação: aceitar um X-Correlation-ID válido ou gerar um; sempre retornar o ID efetivo no header da resposta e no contexto diagnóstico.
+- Correlação: para solicitações aceitas pelo conector e que entram na cadeia Servlet/Spring, aceitar um X-Correlation-ID válido ou gerar um e retornar o ID efetivo no header da resposta e no contexto diagnóstico.
 - Versionamento: alterações incompatíveis da API exigem novo caminho/media type principal e aviso de migração; campos opcionais aditivos normalmente são compatíveis.
 
 ### Contratos operacionais da Fase 01
 
-Esses contratos estão aprovados para uma futura implementação da Fase 01; não são implementados por esta alteração documental. Endpoints operacionais ficam fora do caminho de negócio /api/v1.
+Esses contratos estão implementados e cobertos por testes na Fase 01. Endpoints operacionais ficam fora do caminho de negócio /api/v1.
 
 | Endpoint | Finalidade | Contrato |
 | --- | --- | --- |
 | GET /actuator/health/liveness | Indicar apenas se o processo está vivo | 200 com UP mínimo; não deve consultar dependências externas nem expor configuração |
 | GET /actuator/health/readiness | Indicar se a aplicação pode receber tráfego com segurança | 200 quando pronta, 503 quando não pronta; regras de dependência evoluem somente quando dependências existirem |
-| GET /actuator/info | Retornar metadados de build não sensíveis | Pode expor nome do serviço, versão da aplicação, versão do build e commit SHA quando disponível |
+| GET /actuator/info | Retornar metadados de build não sensíveis | Expõe somente service.name, service.applicationVersion, build.version e build.commitSha quando AEGIS_COMMIT_SHA contiver 7..64 caracteres hexadecimais |
 
 Respostas de info/health nunca devem expor secrets, dumps de variáveis de ambiente, credenciais, caminhos internos, configuração bruta, URLs de dependências ou stack traces. A Fase 01 não tem banco de dados, broker, object store nem serviço downstream, portanto readiness não deve inventar verificações de dependência.
 
@@ -34,10 +34,13 @@ Respostas de info/health nunca devem expor secrets, dumps de variáveis de ambie
 
 - Nome do header: X-Correlation-ID.
 - Um valor recebido só é aceito quando tem comprimento de 1..128 caracteres e cada caractere corresponde à allowlist [A-Za-z0-9._-].
-- Um valor ausente, vazio, grande demais ou inválido é substituído por um identificador opaco gerado pelo servidor; o valor rejeitado nunca é devolvido nem registrado literalmente.
+- Exatamente um valor recebido é avaliado sem `trim`; valores múltiplos são inválidos.
+- Um valor ausente, vazio, grande demais ou inválido é substituído por um UUID v4 gerado pelo servidor; o valor rejeitado nunca é devolvido nem registrado literalmente.
 - O ID efetivo aparece no header da resposta, nos logs estruturados e no corpo de erro Problem Details.
 - Um ID de correlação é apenas diagnóstico: não é autenticação, autorização, idempotência nem prova de unicidade, e clientes podem legitimamente reutilizá-lo em um fluxo lógico.
 - A propagação downstream deve preservar o valor canônico limitado e impedir injeção em header/log.
+
+Essas garantias começam depois que o servidor HTTP aceita a requisição e a encaminha à cadeia Servlet/Spring. HTTP malformado, percent encoding rejeitado pelo connector ou headers recusados antes do filtro podem receber a resposta mínima do container sem Problem Details nem `X-Correlation-ID`. A Fase 01 documenta esse limite e não customiza o Tomcat para substituí-lo.
 
 ## Autenticação e autorização
 
@@ -83,11 +86,12 @@ Recursos mutáveis expõem id, createdAt, updatedAt e version quando relevante. 
 
 ~~~json
 {
-  "type": "https://aegis.local/problems/validation-error",
+  "type": "urn:aegis:problem:validation-error",
   "title": "Falha na validação da solicitação",
   "status": 400,
   "code": "VALIDATION_ERROR",
   "detail": "Um ou mais campos são inválidos.",
+  "instance": "/api/v1/products",
   "correlationId": "01J...",
   "timestamp": "2026-08-16T15:00:00Z",
   "errors": [
@@ -97,6 +101,8 @@ Recursos mutáveis expõem id, createdAt, updatedAt e version quando relevante. 
 ~~~
 
 O media type da resposta é application/problem+json. O formato segue a semântica Problem Details e acrescenta um code estável da aplicação. detail e mensagens de campo são seguros para clientes; stack traces, SQL, caminhos, hostnames internos e secrets são excluídos.
+
+`instance` usa somente uma representação limitada e sanitizada do path: query string, matrix parameters e caracteres de controle são removidos; uma representação inválida recua para `/` sem refletir o URI bruto.
 
 ### Códigos de status comuns
 
@@ -353,7 +359,7 @@ Limites exatos exigem baseline, mas todo endpoint deve ter limites de tamanho de
 
 ## Evolução e testes do contrato
 
-- OpenAPI torna-se executável e revisada com a primeira implementação da API.
+- OpenAPI torna-se executável e revisada com a primeira implementação da API pública de negócio em `/api/v1`; os endpoints operacionais da Fase 01 não antecipam esse artefato.
 - Testes de contrato de consumidor/provedor protegem o limite do Mock do Centro de Vendas e schemas de eventos.
 - Verificações de compatibilidade retroativa executam antes do merge quando contratos mudarem.
 - Exemplos tornam-se fixtures de teste somente após validação; exemplos documentais não devem conter secrets reais nem dados pessoais.
